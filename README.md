@@ -2,7 +2,21 @@
 
 ## Secure ReAct Bash Agent
 
+## Project Goal
+
+To build a minimal but secure autonomous ReAct agent capable of executing bash commands safely while resisting prompt injection and unsafe tool usage.
+
 ---
+
+# Setup & Run
+
+1. git clone ...
+2. cd ML_Assignment2.1
+3. python -m venv venv
+4. Activate venv: source venv/bin/activate (or Windows equivalent)
+5. Install dependencies: pip install -r requirements.txt
+6. Run agent: python app/main.py
+
 
 # Overview
 
@@ -28,8 +42,6 @@ The project intentionally avoids:
 The goal was to understand the core mechanics behind AI agents before using higher-level frameworks.
 
 ---
-
-# Architecture
 
 ## Main Components
 
@@ -134,6 +146,8 @@ are blocked.
 
 ---
 
+
+
 ## 2. Prompt Injection Protection
 
 The agent validates commands before execution.
@@ -203,6 +217,15 @@ timeout=10
 This helps prevent hanging or long-running commands.
 
 ---
+
+## Key Design Decision
+
+Instead of using framework-based agents (LangChain, LangGraph), this project implements a fully manual ReAct loop to better understand:
+
+- tool orchestration
+- parsing structured outputs
+- secure command execution
+- iterative reasoning with observations
 
 # Testing
 
@@ -314,3 +337,30 @@ The final system supports:
 * Prompt injection defense
 
 The project provided hands-on experience with the core engineering concepts behind modern AI coding agents.
+
+
+# Architecture diagram
+
+User
+  ↓
+main.py
+  ↓
+agent.py (ReAct loop)
+  ↓
+OpenAI API
+  ↓
+parser.py
+  ↓
+shell_tools.py (secure execution)
+  ↓
+workspace (sandbox)
+
+
+# Screenshots
+
+See `/screenshots` folder for examples of agent behavior and security tests.
+The following screenshots demonstrate:
+
+1. Multi-step ReAct reasoning
+2. Bug detection in a Python project
+3. Security enforcement against dangerous shell commands
