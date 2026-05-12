@@ -50,9 +50,9 @@ The goal was to understand the core mechanics behind AI agents before using high
 | `main.py`        | Starts the application and receives user tasks |
 | `agent.py`       | Main ReAct loop                                |
 | `parser.py`      | Parses model outputs into actions              |
-| `shell_tools.py` | Executes safe bash commands                    |
+| `shell_tools.py` | Validates and executes approved bash commands  |
 | `prompts.py`     | Contains the system prompt                     |
-| `workspace/`     | Sandboxed working directory                    |
+| `workspace/`     | Restricted working directory                   |
 
 ---
 
@@ -173,10 +173,12 @@ This prevents:
 * shell injection
 * parent directory traversal
 * unsafe redirects
+* shell variable expansion
+* absolute-path access outside the workspace
 
 ---
 
-## 3. Workspace Sandboxing
+## 3. Restricted Workspace Execution
 
 All commands are executed inside:
 
@@ -187,10 +189,10 @@ workspace/
 using:
 
 ```python
-safe_command = f"cd workspace && {command}"
+subprocess.run(parts, cwd=WORKSPACE_DIR, shell=False, ...)
 ```
 
-This limits filesystem access.
+The command is parsed with `shlex.split()` and executed with `shell=False`, which avoids shell command expansion and keeps normal command execution inside the workspace. The validator also blocks parent-directory traversal and absolute paths. This is a restricted working directory, not a full operating-system sandbox like Docker or RunPod.
 
 ---
 
@@ -215,6 +217,18 @@ timeout=10
 ```
 
 This helps prevent hanging or long-running commands.
+
+---
+
+## 6. Step Limit
+
+The ReAct loop has a fixed maximum number of model calls:
+
+```python
+MAX_STEPS = 5
+```
+
+This limits accidental API usage and reduces the risk of unexpected cloud costs.
 
 ---
 

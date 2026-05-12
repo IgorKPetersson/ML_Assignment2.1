@@ -11,6 +11,7 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 MODEL = os.getenv("MODEL")
+MAX_STEPS = 5
 
 def run_agent(user_task):
 
@@ -25,7 +26,7 @@ def run_agent(user_task):
         }
     ]
 
-    for step in range(5):
+    for step in range(MAX_STEPS):
 
         response = client.chat.completions.create(
             model=MODEL,
@@ -44,6 +45,10 @@ def run_agent(user_task):
 
         action = parsed["action"]
         tool_input = parsed["input"]
+
+        if action is None or tool_input is None:
+            print("\nAgent stopped: malformed model response.\n")
+            break
 
         if action == "NONE":
             print("\nAgent finished.\n")
@@ -70,5 +75,10 @@ Observation:
                 "role": "user",
                 "content": observation_message
             })
+
+            continue
+
+        print(f"\nAgent stopped: unknown action '{action}'.\n")
+        break
 
     return
