@@ -38,6 +38,11 @@ WORKSPACE_DIR = Path(__file__).resolve().parent.parent / "workspace"
 WINDOWS_ABSOLUTE_PATH = re.compile(r"^[a-zA-Z]:[\\/]")
 
 
+def is_secret_env_path(token):
+    name = Path(token).name
+    return name == ".env" or name.startswith(".env.")
+
+
 def validate_command(command):
     if not command or not command.strip():
         return None, "Empty command blocked."
@@ -62,6 +67,8 @@ def validate_command(command):
     for token in parts[1:]:
         if token.startswith("/") or token.startswith("\\") or WINDOWS_ABSOLUTE_PATH.match(token):
             return None, f"Blocked absolute path: {token}"
+        if is_secret_env_path(token):
+            return None, f"Blocked secret environment file path: {token}"
 
     for blocked_option in BLOCKED_OPTIONS.get(base_command, []):
         if blocked_option in parts[1:]:
@@ -77,7 +84,7 @@ def execute_bash(command):
 
     confirm = input(f"\nExecute command? [y/n]\n{command}\n> ")
 
-    if confirm.lower() != "y":
+    if confirm.strip().lower() != "y":
         return "Command cancelled by user."
 
     try:

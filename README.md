@@ -1,4 +1,4 @@
-# Assignment 2 – Part 1
+# Assignment 2 - Part 1
 
 ## Secure ReAct Bash Agent
 
@@ -10,12 +10,55 @@ To build a minimal but secure autonomous ReAct agent capable of executing bash c
 
 # Setup & Run
 
+## Option A: Run locally
+
 1. git clone ...
 2. cd ML_Assignment2.1
 3. python -m venv venv
 4. Activate venv: source venv/bin/activate (or Windows equivalent)
 5. Install dependencies: pip install -r requirements.txt
-6. Run agent: python app/main.py
+6. Copy `.env.example` to `.env` and add your OpenAI API key
+7. Run agent: python app/main.py
+
+On Windows, the Docker option is recommended because the allowed commands are
+Linux-style shell commands.
+
+## Option B: Run inside Docker
+
+Docker adds an extra safety layer around the agent. The OpenAI API key is read
+from `.env` at runtime and is not copied into the Docker image.
+
+Build the image:
+
+```bash
+docker compose build
+```
+
+Run the agent interactively:
+
+```bash
+docker compose run --rm react-agent
+```
+
+Do not run `docker compose config` while `.env` contains a real API key. That
+command prints the resolved Compose configuration and can expose secrets in the
+terminal. Use it only with dummy values if you need to inspect the config.
+
+The container is configured with:
+
+* a non-root user
+* a read-only container filesystem
+* dropped Linux capabilities
+* `no-new-privileges`
+* `/tmp` as temporary writable storage
+
+The Python safety checks still remain active:
+
+* command allowlist
+* blocked unsafe patterns
+* execution inside `workspace/`
+* `shell=False`
+* manual `y/n` confirmation before every command
 
 
 # Overview
@@ -81,7 +124,7 @@ Observation:
 
 ```text
 calculator.py
-text_calculator.py
+test_calculator.py
 ```
 
 The observation is then sent back into the model context.
@@ -164,6 +207,8 @@ BLOCKED_PATTERNS = [
     ">>",
     "<",
     "~",
+    "`",
+    "$",
 ]
 ```
 
@@ -174,7 +219,11 @@ This prevents:
 * parent directory traversal
 * unsafe redirects
 * shell variable expansion
-* absolute-path access outside the workspace
+
+Additional path checks block:
+
+* absolute paths outside the workspace
+* direct `.env` and `.env.*` file access
 
 ---
 
@@ -192,7 +241,7 @@ using:
 subprocess.run(parts, cwd=WORKSPACE_DIR, shell=False, ...)
 ```
 
-The command is parsed with `shlex.split()` and executed with `shell=False`, which avoids shell command expansion and keeps normal command execution inside the workspace. The validator also blocks parent-directory traversal and absolute paths. This is a restricted working directory, not a full operating-system sandbox like Docker or RunPod.
+The command is parsed with `shlex.split()` and executed with `shell=False`, which avoids shell command expansion and keeps normal command execution inside the workspace. The validator also blocks parent-directory traversal and absolute paths. When run through Docker, the agent is also placed inside a container for an extra security layer.
 
 ---
 
@@ -330,7 +379,7 @@ Potential future improvements:
 * JSON-based parser
 * Logging system
 * Token/cost limiting
-* Docker sandboxing
+* Stronger Docker sandboxing for later file-editing tasks
 * Unit tests
 * Memory system
 * Multi-agent collaboration
@@ -353,21 +402,23 @@ The final system supports:
 The project provided hands-on experience with the core engineering concepts behind modern AI coding agents.
 
 
-# Architecture diagram
+# Architecture Diagram
 
+```text
 User
-  ↓
+  |
 main.py
-  ↓
+  |
 agent.py (ReAct loop)
-  ↓
+  |
 OpenAI API
-  ↓
+  |
 parser.py
-  ↓
+  |
 shell_tools.py (secure execution)
-  ↓
-workspace (sandbox)
+  |
+workspace (restricted working directory)
+```
 
 
 # Screenshots
