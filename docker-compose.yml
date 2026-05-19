@@ -6,6 +6,12 @@ services:
     stdin_open: true
     tty: true
     read_only: true
+    volumes:
+      - ./app:/agent/app
+      - ./config:/agent/config
+      - ./workspace:/agent/workspace
+      - ./README.md:/agent/README.md
+      - ./requirements.txt:/agent/requirements.txt
     tmpfs:
       - /tmp
     cap_drop:

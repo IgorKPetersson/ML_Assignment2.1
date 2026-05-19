@@ -77,15 +77,16 @@ def validate_command(command):
     return parts, None
 
 
-def execute_bash(command):
+def execute_bash(command, require_confirmation=True):
     parts, error = validate_command(command)
     if error:
         return error
 
-    confirm = input(f"\nExecute command? [y/n]\n{command}\n> ")
+    if require_confirmation:
+        confirm = input(f"\nExecute command? [y/n]\n{command}\n> ")
 
-    if confirm.strip().lower() != "y":
-        return "Command cancelled by user."
+        if confirm.strip().lower() != "y":
+            return "Command cancelled by user."
 
     try:
         result = subprocess.run(
