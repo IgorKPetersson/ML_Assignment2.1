@@ -5,6 +5,7 @@ from openai import OpenAI
 
 from config import (
     AGENT_NAME,
+    DEBUG_AGENT,
     MAX_STEPS,
     MAX_TOOL_OUTPUT_CHARS,
     MODEL,
@@ -85,44 +86,61 @@ def observation_for(decision, output_store):
     return f"Unknown action: {action}"
 
 
+class AgentSession:
+    def __init__(self):
+        self.output_store = {}
+        self.messages = [
+            {
+                "role": "system",
+                "content": load_system_prompt(),
+            },
+            {
+                "role": "user",
+                "content": f"Agent name: {AGENT_NAME}",
+            },
+        ]
+
+    def run_task(self, user_task):
+        self.messages.append({
+            "role": "user",
+            "content": f"User task:\n{user_task}",
+        })
+
+        for step in range(MAX_STEPS):
+            decision = model_decision(self.messages)
+
+            if DEBUG_AGENT:
+                print("\nSTRUCTURED MODEL RESPONSE:\n")
+                print(json.dumps(decision, indent=2))
+
+            action = decision["action"]
+
+            self.messages.append({
+                "role": "assistant",
+                "content": json.dumps(decision),
+            })
+
+            if action == "yield":
+                print("\nAgent finished.\n")
+                print(decision["answer"])
+                return decision["answer"]
+
+            observation = observation_for(decision, self.output_store)
+
+            if DEBUG_AGENT:
+                print("\nOBSERVATION:\n")
+                print(observation)
+
+            self.messages.append({
+                "role": "user",
+                "content": f"Observation:\n{observation}",
+            })
+
+        message = "Agent stopped: maximum step count reached."
+        print(f"\n{message}\n")
+        return message
+
+
 def run_agent(user_task):
-    output_store = {}
-    messages = [
-        {
-            "role": "system",
-            "content": load_system_prompt(),
-        },
-        {
-            "role": "user",
-            "content": f"Agent name: {AGENT_NAME}\n\nUser task:\n{user_task}",
-        },
-    ]
-
-    for step in range(MAX_STEPS):
-        decision = model_decision(messages)
-
-        print("\nSTRUCTURED MODEL RESPONSE:\n")
-        print(json.dumps(decision, indent=2))
-
-        action = decision["action"]
-
-        if action == "yield":
-            print("\nAgent finished.\n")
-            print(decision["answer"])
-            break
-
-        observation = observation_for(decision, output_store)
-
-        print("\nOBSERVATION:\n")
-        print(observation)
-
-        messages.append({
-            "role": "assistant",
-            "content": json.dumps(decision),
-        })
-        messages.append({
-            "role": "user",
-            "content": f"Observation:\n{observation}",
-        })
-    else:
-        print("\nAgent stopped: maximum step count reached.\n")
+    session = AgentSession()
+    return session.run_task(user_task)

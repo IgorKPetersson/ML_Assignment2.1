@@ -35,6 +35,7 @@ AGENT_NAME=igorpetersson-codeagent
 MAX_STEPS=10
 MAX_TOOL_OUTPUT_CHARS=4000
 REQUIRE_TOOL_CONFIRMATION=true
+DEBUG_AGENT=false
 ```
 
 Do not commit `.env`.
@@ -144,6 +145,10 @@ yield
 The JSON schema is defined in `app/structured_output.py`. The agent loop reads
 the structured response and dispatches the requested action itself. OpenAI does
 not execute tools for the agent.
+
+Set `DEBUG_AGENT=true` in `.env` if you want to print the raw structured model
+responses and tool observations for testing or screenshots. Leave it `false`
+for normal interactive use.
 
 ---
 

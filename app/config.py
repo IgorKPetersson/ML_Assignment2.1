@@ -15,6 +15,7 @@ AGENT_NAME = os.getenv("AGENT_NAME", "igorpetersson-codeagent")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "10"))
 MAX_TOOL_OUTPUT_CHARS = int(os.getenv("MAX_TOOL_OUTPUT_CHARS", "4000"))
 REQUIRE_TOOL_CONFIRMATION = os.getenv("REQUIRE_TOOL_CONFIRMATION", "true").lower() == "true"
+DEBUG_AGENT = os.getenv("DEBUG_AGENT", "false").lower() == "true"
 
 EDITABLE_PATHS = [
     WORKSPACE_DIR,
