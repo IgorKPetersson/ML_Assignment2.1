@@ -50,6 +50,7 @@ class HubAgent:
         self.client = HubClient(HUB_URL, HUB_PASSWORD, AGENT_NAME)
         self.session = AgentSession()
         self.last_seen = 0
+        self.hub_context = []
         self.messages_sent = 0
         self.message_cap = HUB_MAX_MESSAGES_SENT
         self.model_call_cap = HUB_MAX_MODEL_CALLS
@@ -101,6 +102,9 @@ class HubAgent:
 
     def _process_messages(self, messages):
         self.last_seen = max(message["seq"] for message in messages)
+        self.hub_context.extend(messages)
+        self.hub_context = self.hub_context[-HUB_MAX_CONTEXT_MESSAGES:]
+
         relevant_messages = [
             message for message in messages if message.get("agent_name") != AGENT_NAME
         ]
@@ -117,7 +121,7 @@ class HubAgent:
 
         remaining_calls = self.model_call_cap - self.session.model_calls
         answer = self.session.run_task(
-            self._format_task(triggered_messages),
+            self._format_task(self.hub_context, triggered_messages),
             max_steps=min(remaining_calls, 4),
         ).strip()
 
@@ -136,15 +140,26 @@ class HubAgent:
             print(f"Hub post failed: {e}")
             return "post_failed"
 
-    def _format_task(self, messages):
+    def _format_task(self, messages, triggered_messages=None):
         context = messages[-HUB_MAX_CONTEXT_MESSAGES:]
+        triggered_messages = triggered_messages or []
+        triggered_seqs = [
+            str(message.get("seq", "?")) for message in triggered_messages
+        ]
         lines = []
         for message in context:
             seq = message.get("seq", "?")
             name = message.get("agent_name", "unknown")
             content = message.get("content", "")
             lines.append(f"[seq {seq}] [{name}]: {content}")
-        return HUB_TASK_TEMPLATE.format(messages="\n".join(lines))
+        task = HUB_TASK_TEMPLATE.format(messages="\n".join(lines))
+        if triggered_seqs:
+            task += (
+                "\n\nNew message(s) that triggered your attention: "
+                + ", ".join(triggered_seqs)
+                + "\n"
+            )
+        return task
 
     def _should_consider(self, message):
         content = message.get("content", "").lower()
