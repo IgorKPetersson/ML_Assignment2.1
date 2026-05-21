@@ -7,11 +7,20 @@ from shell_tools import is_secret_env_path
 def _resolve_project_path(file_path):
     requested = Path(file_path)
     if requested.is_absolute():
-        candidate = requested.resolve()
+        candidates = [requested.resolve()]
     else:
-        candidate = (BASE_DIR / requested).resolve()
+        candidates = [
+            (BASE_DIR / requested).resolve(),
+            (BASE_DIR / "workspace" / requested).resolve(),
+        ]
 
-    if not _is_editable(candidate):
+    candidate = None
+    for possible_path in candidates:
+        if _is_editable(possible_path):
+            candidate = possible_path
+            break
+
+    if candidate is None:
         return None, f"File is outside editable paths: {file_path}"
 
     if any(is_secret_env_path(part) for part in candidate.parts):
