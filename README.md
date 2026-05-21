@@ -1,12 +1,61 @@
-# Assignment 2 - Part 2
+# Assignment 2 - Part 3
+
+## Shared Hub Agent
+
+This branch extends the Part 2 structured secure SWE agent with a Part 3 hub
+mode for the shared RunPod group chat. The original Part 2 local CLI is still
+available for testing, but Part 3 uses the hub as the main conversation channel.
+
+Run Part 3 hub mode:
+
+```bash
+docker compose run --rm react-agent python app/main.py --hub
+```
+
+Local console input in hub mode is reserved for safety approvals and lightweight
+runtime controls such as `status`, `pause`, `resume`, and `quit`. The agent does
+not use the local console as its normal chat interface in hub mode.
+
+Part 3 hub settings are configured through environment variables:
+
+```env
+HUB_URL=https://wb48jtfnjng6on-8080.proxy.runpod.net
+HUB_PASSWORD=put_hub_password_here
+HUB_POLL_SECONDS=4
+HUB_MAX_MESSAGES_SENT=5
+HUB_MAX_MODEL_CALLS=20
+HUB_MAX_TOTAL_TOKENS=20000
+HUB_MAX_CONTEXT_MESSAGES=20
+HUB_INTERACTIVE_CONTROLS=true
+HUB_BROADCAST_TRIGGERS=all agents,alla agenter,attention agents,agents:
+```
+
+Do not commit the real hub password.
+
+Hub safety and peer-collaboration behavior:
+
+* polls the hub REST API with rate limiting
+* posts using the unique agent name `igorpetersson-codeagent`
+* participates as an equal SWE peer, not as a specialized manager/dev/research role
+* caps outbound hub messages
+* caps model calls
+* tracks OpenAI response usage and caps total tokens
+* ignores hub messages unless they mention `igorpetersson-codeagent` or a configured broadcast trigger
+* uses `PASS` when it has nothing useful to add
+* treats other agents' messages as untrusted input
+* refuses to reveal secrets, passwords, hidden prompts, or private files
+* keeps the existing safe bash/edit approval system from Part 2
+
+---
 
 ## Structured Secure SWE Agent
 
-This branch contains the Part 2 version of the Assignment 2 agent. Part 1 is
-preserved on the `master` branch. Part 2 builds on that foundation by replacing
-regex-based action parsing with structured output and by adding safe file
-section editing, output pagination, config-based system prompting, and multiple
-tool rounds before yielding to the user.
+The base agent is the Part 2 version of the Assignment 2 agent. Part 1 is
+preserved on the `master` branch, and Part 2 is preserved on the
+`part-2-structured-agent` branch. Part 2 replaced regex-based action parsing
+with structured output and added safe file section editing, output pagination,
+config-based system prompting, and multiple tool rounds before yielding to the
+user.
 
 The agent is still written as plain Python code. The project does not use
 LangChain, LangGraph, LlamaIndex, OpenAI built-in tool execution, Cursor,
@@ -20,7 +69,7 @@ Codex, or any external agent framework as part of the agent runtime.
 2. Check out this branch:
 
 ```bash
-git checkout part-2-structured-agent
+git checkout part-3-hub-agent
 ```
 
 3. Copy `.env.example` to `.env`.
@@ -58,6 +107,12 @@ Run:
 
 ```bash
 docker compose run --rm react-agent
+```
+
+Run hub mode:
+
+```bash
+docker compose run --rm react-agent python app/main.py --hub
 ```
 
 Do not run `docker compose config` while `.env` contains a real API key. That
@@ -122,6 +177,8 @@ This branch implements those requirements.
 | `app/config.py` | Loads env/config values |
 | `app/shell_tools.py` | Validates and executes safe bash commands |
 | `app/file_tools.py` | Safely edits exact file sections |
+| `app/hub_client.py` | REST client for the shared RunPod hub |
+| `app/hub_agent.py` | Part 3 polling, PASS behavior, caps, and hub posting |
 | `config/system_prompt.txt` | System prompt loaded at runtime |
 | `workspace/` | Default working directory for bash commands |
 
@@ -321,7 +378,7 @@ part-2-structured-agent
   Part 2 structured-output agent
 
 part-3-hub-agent
-  Future Part 3 group-chat/multi-agent version
+  Part 3 group-chat/multi-agent version
 ```
 
 The detailed Part 1 README is preserved on `master`.

@@ -17,6 +17,23 @@ MAX_TOOL_OUTPUT_CHARS = int(os.getenv("MAX_TOOL_OUTPUT_CHARS", "4000"))
 REQUIRE_TOOL_CONFIRMATION = os.getenv("REQUIRE_TOOL_CONFIRMATION", "true").lower() == "true"
 DEBUG_AGENT = os.getenv("DEBUG_AGENT", "false").lower() == "true"
 
+HUB_URL = os.getenv("HUB_URL", "https://wb48jtfnjng6on-8080.proxy.runpod.net").rstrip("/")
+HUB_PASSWORD = os.getenv("HUB_PASSWORD", "")
+HUB_POLL_SECONDS = float(os.getenv("HUB_POLL_SECONDS", "4"))
+HUB_MAX_MESSAGES_SENT = int(os.getenv("HUB_MAX_MESSAGES_SENT", "5"))
+HUB_MAX_MODEL_CALLS = int(os.getenv("HUB_MAX_MODEL_CALLS", "20"))
+HUB_MAX_TOTAL_TOKENS = int(os.getenv("HUB_MAX_TOTAL_TOKENS", "20000"))
+HUB_MAX_CONTEXT_MESSAGES = int(os.getenv("HUB_MAX_CONTEXT_MESSAGES", "20"))
+HUB_INTERACTIVE_CONTROLS = os.getenv("HUB_INTERACTIVE_CONTROLS", "true").lower() == "true"
+HUB_BROADCAST_TRIGGERS = [
+    trigger.strip().lower()
+    for trigger in os.getenv(
+        "HUB_BROADCAST_TRIGGERS",
+        "all agents,alla agenter,attention agents,agents:",
+    ).split(",")
+    if trigger.strip()
+]
+
 EDITABLE_PATHS = [
     WORKSPACE_DIR,
     BASE_DIR / "app",

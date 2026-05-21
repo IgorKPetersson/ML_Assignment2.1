@@ -60,7 +60,10 @@ def model_decision(messages):
     )
 
     content = response.choices[0].message.content
-    return json.loads(content)
+    tokens = 0
+    if response.usage is not None:
+        tokens = response.usage.total_tokens or 0
+    return json.loads(content), tokens
 
 
 def observation_for(decision, output_store):
@@ -89,6 +92,8 @@ def observation_for(decision, output_store):
 class AgentSession:
     def __init__(self):
         self.output_store = {}
+        self.model_calls = 0
+        self.total_tokens = 0
         self.messages = [
             {
                 "role": "system",
@@ -100,14 +105,18 @@ class AgentSession:
             },
         ]
 
-    def run_task(self, user_task):
+    def run_task(self, user_task, max_steps=None):
         self.messages.append({
             "role": "user",
             "content": f"User task:\n{user_task}",
         })
 
-        for step in range(MAX_STEPS):
-            decision = model_decision(self.messages)
+        step_limit = max_steps if max_steps is not None else MAX_STEPS
+
+        for step in range(step_limit):
+            decision, tokens = model_decision(self.messages)
+            self.model_calls += 1
+            self.total_tokens += tokens
 
             if DEBUG_AGENT:
                 print("\nSTRUCTURED MODEL RESPONSE:\n")
