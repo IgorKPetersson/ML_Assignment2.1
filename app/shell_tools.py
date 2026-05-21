@@ -35,7 +35,7 @@ BLOCKED_OPTIONS = {
 }
 
 WORKSPACE_DIR = Path(__file__).resolve().parent.parent / "workspace"
-WINDOWS_ABSOLUTE_PATH = re.compile(r"^[a-zA-Z]:[\\/]")
+WINDOWS_DRIVE_PATH = re.compile(r"^[a-zA-Z]:")
 
 
 def is_secret_env_path(token):
@@ -65,7 +65,7 @@ def validate_command(command):
         return None, f"Command not allowed: {base_command}"
 
     for token in parts[1:]:
-        if token.startswith("/") or token.startswith("\\") or WINDOWS_ABSOLUTE_PATH.match(token):
+        if token.startswith("/") or token.startswith("\\") or WINDOWS_DRIVE_PATH.match(token):
             return None, f"Blocked absolute path: {token}"
         if is_secret_env_path(token):
             return None, f"Blocked secret environment file path: {token}"

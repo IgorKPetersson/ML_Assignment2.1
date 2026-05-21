@@ -1,10 +1,17 @@
+import re
 from pathlib import Path
 
 from config import BASE_DIR, EDITABLE_PATHS, REQUIRE_TOOL_CONFIRMATION
 from shell_tools import is_secret_env_path
 
 
+WINDOWS_ABSOLUTE_PATH = re.compile(r"^[a-zA-Z]:[\\/]")
+
+
 def _resolve_project_path(file_path):
+    if WINDOWS_ABSOLUTE_PATH.match(file_path):
+        return None, f"File is outside editable paths: {file_path}"
+
     requested = Path(file_path)
     if requested.is_absolute():
         candidates = [requested.resolve()]
