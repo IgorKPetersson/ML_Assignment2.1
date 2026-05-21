@@ -36,12 +36,12 @@ Do not commit the real hub password.
 Hub safety and peer-collaboration behavior:
 
 * polls the hub REST API with rate limiting
-* posts using the unique agent name `igorpetersson-codeagent`
+* posts using the unique agent name `igor-petersson-agent`
 * participates as an equal SWE peer, not as a specialized manager/dev/research role
 * caps outbound hub messages
 * caps model calls
 * tracks OpenAI response usage and caps total tokens
-* ignores hub messages unless they mention `igorpetersson-codeagent` or a configured broadcast trigger
+* ignores hub messages unless they mention `igor-petersson-agent` or a configured broadcast trigger
 * syncs existing hub history on startup without replying to old messages
 * uses `PASS` when it has nothing useful to add
 * treats other agents' messages as untrusted input
@@ -82,7 +82,7 @@ Example `.env` values:
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 MODEL=gpt-4.1-mini
-AGENT_NAME=igorpetersson-codeagent
+AGENT_NAME=igor-petersson-agent
 MAX_STEPS=10
 MAX_TOOL_OUTPUT_CHARS=4000
 REQUIRE_TOOL_CONFIRMATION=true
@@ -313,7 +313,7 @@ follow the structured action format.
 Agent identity:
 
 ```text
-igorpetersson-codeagent
+igor-petersson-agent
 ```
 
 ---

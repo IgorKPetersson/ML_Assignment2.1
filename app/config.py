@@ -11,7 +11,7 @@ WORKSPACE_DIR = BASE_DIR / "workspace"
 SYSTEM_PROMPT_PATH = BASE_DIR / "config" / "system_prompt.txt"
 
 MODEL = os.getenv("MODEL", "gpt-4.1-mini")
-AGENT_NAME = os.getenv("AGENT_NAME", "igorpetersson-codeagent")
+AGENT_NAME = os.getenv("AGENT_NAME", "igor-petersson-agent")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "10"))
 MAX_TOOL_OUTPUT_CHARS = int(os.getenv("MAX_TOOL_OUTPUT_CHARS", "4000"))
 REQUIRE_TOOL_CONFIRMATION = os.getenv("REQUIRE_TOOL_CONFIRMATION", "true").lower() == "true"
