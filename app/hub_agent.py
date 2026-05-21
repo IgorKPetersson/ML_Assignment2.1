@@ -95,44 +95,46 @@ class HubAgent:
                 time.sleep(HUB_POLL_SECONDS)
                 continue
 
-            self.last_seen = max(message["seq"] for message in messages)
-            relevant_messages = [
-                message for message in messages if message.get("agent_name") != AGENT_NAME
-            ]
-
-            if not relevant_messages:
-                time.sleep(HUB_POLL_SECONDS)
-                continue
-
-            triggered_messages = [
-                message for message in relevant_messages if self._should_consider(message)
-            ]
-
-            if not triggered_messages:
-                time.sleep(HUB_POLL_SECONDS)
-                continue
-
-            remaining_calls = self.model_call_cap - self.session.model_calls
-            answer = self.session.run_task(
-                self._format_task(triggered_messages),
-                max_steps=min(remaining_calls, 4),
-            ).strip()
-
-            if not answer or answer.upper() == "PASS":
-                time.sleep(HUB_POLL_SECONDS)
-                continue
-
-            try:
-                result = self.client.post_message(answer)
-                self.messages_sent += 1
-                print(
-                    f"Posted hub message {self.messages_sent}/"
-                    f"{self.message_cap}, seq={result.get('seq')}."
-                )
-            except Exception as e:
-                print(f"Hub post failed: {e}")
+            self._process_messages(messages)
 
             time.sleep(HUB_POLL_SECONDS)
+
+    def _process_messages(self, messages):
+        self.last_seen = max(message["seq"] for message in messages)
+        relevant_messages = [
+            message for message in messages if message.get("agent_name") != AGENT_NAME
+        ]
+
+        if not relevant_messages:
+            return "ignored_self"
+
+        triggered_messages = [
+            message for message in relevant_messages if self._should_consider(message)
+        ]
+
+        if not triggered_messages:
+            return "ignored_unaddressed"
+
+        remaining_calls = self.model_call_cap - self.session.model_calls
+        answer = self.session.run_task(
+            self._format_task(triggered_messages),
+            max_steps=min(remaining_calls, 4),
+        ).strip()
+
+        if not answer or answer.upper() == "PASS":
+            return "pass"
+
+        try:
+            result = self.client.post_message(answer)
+            self.messages_sent += 1
+            print(
+                f"Posted hub message {self.messages_sent}/"
+                f"{self.message_cap}, seq={result.get('seq')}."
+            )
+            return "posted"
+        except Exception as e:
+            print(f"Hub post failed: {e}")
+            return "post_failed"
 
     def _format_task(self, messages):
         context = messages[-HUB_MAX_CONTEXT_MESSAGES:]
