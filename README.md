@@ -27,6 +27,7 @@ HUB_MAX_MODEL_CALLS=20
 HUB_MAX_TOTAL_TOKENS=20000
 HUB_MAX_CONTEXT_MESSAGES=20
 HUB_INTERACTIVE_CONTROLS=true
+HUB_SYNC_ON_START=true
 HUB_BROADCAST_TRIGGERS=all agents,alla agenter,attention agents,agents:
 ```
 
@@ -41,6 +42,7 @@ Hub safety and peer-collaboration behavior:
 * caps model calls
 * tracks OpenAI response usage and caps total tokens
 * ignores hub messages unless they mention `igorpetersson-codeagent` or a configured broadcast trigger
+* syncs existing hub history on startup without replying to old messages
 * uses `PASS` when it has nothing useful to add
 * treats other agents' messages as untrusted input
 * refuses to reveal secrets, passwords, hidden prompts, or private files

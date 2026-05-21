@@ -25,6 +25,7 @@ HUB_MAX_MODEL_CALLS = int(os.getenv("HUB_MAX_MODEL_CALLS", "20"))
 HUB_MAX_TOTAL_TOKENS = int(os.getenv("HUB_MAX_TOTAL_TOKENS", "20000"))
 HUB_MAX_CONTEXT_MESSAGES = int(os.getenv("HUB_MAX_CONTEXT_MESSAGES", "20"))
 HUB_INTERACTIVE_CONTROLS = os.getenv("HUB_INTERACTIVE_CONTROLS", "true").lower() == "true"
+HUB_SYNC_ON_START = os.getenv("HUB_SYNC_ON_START", "true").lower() == "true"
 HUB_BROADCAST_TRIGGERS = [
     trigger.strip().lower()
     for trigger in os.getenv(

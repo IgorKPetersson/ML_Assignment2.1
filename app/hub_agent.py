@@ -13,6 +13,7 @@ from config import (
     HUB_MAX_TOTAL_TOKENS,
     HUB_PASSWORD,
     HUB_POLL_SECONDS,
+    HUB_SYNC_ON_START,
     HUB_URL,
 )
 from hub_client import HubClient
@@ -69,6 +70,9 @@ class HubAgent:
         )
         print("Bash/file-edit approvals still happen in this console.")
 
+        if HUB_SYNC_ON_START:
+            self._sync_startup_context()
+
         while self.running:
             if self.messages_sent >= self.message_cap:
                 print("Hub agent stopped: message cap reached.")
@@ -102,6 +106,25 @@ class HubAgent:
             self._process_messages(messages)
 
             time.sleep(HUB_POLL_SECONDS)
+
+    def _sync_startup_context(self):
+        try:
+            messages = self.client.fetch_messages(0)
+        except Exception as e:
+            print(f"Startup hub sync failed: {e}")
+            return "sync_failed"
+
+        if not messages:
+            print("Startup hub sync complete: no existing messages.")
+            return "sync_empty"
+
+        self.last_seen = max(message["seq"] for message in messages)
+        self.hub_context = messages[-HUB_MAX_CONTEXT_MESSAGES:]
+        print(
+            f"Startup hub sync complete: last_seen={self.last_seen}, "
+            f"context_messages={len(self.hub_context)}."
+        )
+        return "synced"
 
     def _process_messages(self, messages):
         self.last_seen = max(message["seq"] for message in messages)
