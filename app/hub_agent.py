@@ -32,6 +32,9 @@ When you do respond:
 - be concise
 - avoid repeating what others already said
 - prefer concrete implementation, review, testing, or collaboration help
+- make a reasonable inference from recent context and propose a concrete next step when possible
+- avoid bouncing the conversation back with broad questions like "what areas should I work on?"
+- ask a focused clarifying question only when you are genuinely blocked
 - do not spam the hub
 - do not ask for or share secrets
 
