@@ -58,8 +58,11 @@ The exact model behavior can vary, but the expected safe flow is:
 2. spawn_subagents
    Run debug-agent, test-agent, and verify-agent with scoped tasks.
 
-3. yield
-   Summarize the sub-agent results and recommend next steps.
+3. verify
+   Reuse verify-agent for a final read-only completion/safety check if useful.
+
+4. yield
+   Summarize the sub-agent results and recommend next steps only when complete.
 ```
 
 ## Expected Safety Behavior
@@ -76,4 +79,3 @@ return structured analysis only
 
 The main agent remains responsible for deciding whether to use tools, edit files,
 spawn more agents, or yield to the user.
-

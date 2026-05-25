@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from openai import OpenAI
 
 from config import MAX_SUBAGENTS, MODEL, SUBAGENT_TIMEOUT_SECONDS
+from tracing import trace
 
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -67,8 +68,10 @@ SUBAGENT_RESPONSE_FORMAT = {
 }
 
 
-def _run_one_subagent(agent_name, task):
+def _run_one_subagent(agent_name, task, evidence):
+    trace("SUB", f"task assigned to {agent_name}", task)
     if agent_name not in SUBAGENT_ROLES:
+        trace("SUB", f"{agent_name} blocked", "unknown sub-agent")
         return {
             "agent_name": agent_name,
             "status": "blocked",
@@ -91,7 +94,11 @@ def _run_one_subagent(agent_name, task):
         },
         {
             "role": "user",
-            "content": f"Scoped task:\n{task}",
+            "content": (
+                f"Scoped task:\n{task}\n\n"
+                "Bounded evidence from the main agent's recent observations:\n"
+                f"{evidence or 'No recent evidence was provided.'}"
+            ),
         },
     ]
 
@@ -105,18 +112,30 @@ def _run_one_subagent(agent_name, task):
     result["tokens"] = 0
     if response.usage is not None:
         result["tokens"] = response.usage.total_tokens or 0
+    trace(
+        "SUB",
+        f"{agent_name} result status={result['status']}",
+        f"tokens={result['tokens']}; summary={result['summary']}",
+    )
     return result
 
 
-def run_subagents(subagent_tasks):
+def run_subagents(subagent_tasks, evidence=""):
     if not subagent_tasks:
+        trace("SUB", "no sub-agent tasks provided")
         return "No sub-agent tasks were provided."
 
     scoped_tasks = subagent_tasks[:MAX_SUBAGENTS]
     if not scoped_tasks:
+        trace("SUB", "sub-agent execution skipped", "MAX_SUBAGENTS is 0")
         return "Sub-agent execution skipped because MAX_SUBAGENTS is 0."
 
     results = []
+    trace(
+        "SUB",
+        f"running {len(scoped_tasks)} sub-agent(s)",
+        f"requested={len(subagent_tasks)} evidence_chars={len(evidence)}",
+    )
 
     executor = ThreadPoolExecutor(max_workers=len(scoped_tasks))
     future_to_task = {
@@ -124,6 +143,7 @@ def run_subagents(subagent_tasks):
             _run_one_subagent,
             item.get("agent_name", ""),
             item.get("task", ""),
+            evidence,
         ): item
         for item in scoped_tasks
     }
@@ -138,6 +158,7 @@ def run_subagents(subagent_tasks):
             try:
                 results.append(future.result())
             except Exception as exc:
+                trace("SUB", f"{item.get('agent_name', 'unknown')} failed", str(exc))
                 results.append({
                     "agent_name": item.get("agent_name", "unknown"),
                     "status": "blocked",
@@ -151,6 +172,7 @@ def run_subagents(subagent_tasks):
         for future in not_done:
             future.cancel()
             item = future_to_task[future]
+            trace("SUB", f"{item.get('agent_name', 'unknown')} timed out")
             results.append({
                 "agent_name": item.get("agent_name", "unknown"),
                 "status": "blocked",
@@ -169,6 +191,7 @@ def run_subagents(subagent_tasks):
             "requested": len(subagent_tasks),
             "executed": len(scoped_tasks),
             "max_subagents": MAX_SUBAGENTS,
+            "total_tokens": sum(result.get("tokens", 0) for result in results),
         },
         indent=2,
     )

@@ -14,11 +14,19 @@ MODEL = os.getenv("MODEL", "gpt-4.1-mini")
 AGENT_NAME = os.getenv("AGENT_NAME", "igor-petersson-agent")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "10"))
 MAX_TOOL_OUTPUT_CHARS = int(os.getenv("MAX_TOOL_OUTPUT_CHARS", "4000"))
+MAX_CONTEXT_MESSAGES = int(os.getenv("MAX_CONTEXT_MESSAGES", "40"))
+MAX_TOTAL_TOKENS = int(os.getenv("MAX_TOTAL_TOKENS", "50000"))
+TOKEN_WARNING_RATIO = float(os.getenv("TOKEN_WARNING_RATIO", "0.8"))
+ESTIMATED_COST_PER_1K_TOKENS = float(os.getenv("ESTIMATED_COST_PER_1K_TOKENS", "0"))
+MAX_BLOCKED_TOOL_ATTEMPTS = int(os.getenv("MAX_BLOCKED_TOOL_ATTEMPTS", "2"))
 REQUIRE_TOOL_CONFIRMATION = os.getenv("REQUIRE_TOOL_CONFIRMATION", "true").lower() == "true"
+TOOL_APPROVAL_TIMEOUT_SECONDS = float(os.getenv("TOOL_APPROVAL_TIMEOUT_SECONDS", "0"))
 DEBUG_AGENT = os.getenv("DEBUG_AGENT", "false").lower() == "true"
+DEBUG_RUNTIME_TRACING = os.getenv("DEBUG_RUNTIME_TRACING", "false").lower() == "true"
 
 MAX_SUBAGENTS = int(os.getenv("MAX_SUBAGENTS", "3"))
 SUBAGENT_TIMEOUT_SECONDS = int(os.getenv("SUBAGENT_TIMEOUT_SECONDS", "60"))
+SUBAGENT_EVIDENCE_CHARS = int(os.getenv("SUBAGENT_EVIDENCE_CHARS", "6000"))
 
 HUB_URL = os.getenv("HUB_URL", "https://wb48jtfnjng6on-8080.proxy.runpod.net").rstrip("/")
 HUB_PASSWORD = os.getenv("HUB_PASSWORD", "")

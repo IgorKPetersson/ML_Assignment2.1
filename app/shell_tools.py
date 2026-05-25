@@ -3,6 +3,9 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from approvals import request_approval
+from tracing import trace
+
 
 ALLOWED_COMMANDS = [
     "ls",
@@ -80,12 +83,24 @@ def validate_command(command):
 def execute_bash(command, require_confirmation=True):
     parts, error = validate_command(command)
     if error:
+        trace("TOOL", "bash blocked", error)
         return error
 
     if require_confirmation:
-        confirm = input(f"\nExecute command? [y/n]\n{command}\n> ")
-
-        if confirm.strip().lower() != "y":
+        approval = request_approval("Execute command? [y/n]", command)
+        if approval == "rejected":
+            return "Command rejected by user."
+        if approval == "timeout":
+            return "Command approval timed out: no user response received. Command not executed."
+        if approval == "unavailable":
+            return "Command approval unavailable: no user response received. Command not executed."
+        if approval == "empty":
+            return "Command approval empty: no approval provided. Command not executed."
+        if approval == "invalid":
+            return "Command approval invalid: expected y/yes/n/no. Command not executed."
+        if approval == "routed_to_main":
+            return "Command approval not received: input was routed back to the main task prompt. Command not executed."
+        if approval != "approved":
             return "Command cancelled by user."
 
     try:
@@ -106,7 +121,9 @@ def execute_bash(command, require_confirmation=True):
         if not output:
             output = f"Command finished with exit code {result.returncode}."
 
+        trace("TOOL", "bash completed", f"exit_code={result.returncode} output_chars={len(output)}")
         return output
 
     except Exception as e:
+        trace("TOOL", "bash failed", str(e))
         return str(e)

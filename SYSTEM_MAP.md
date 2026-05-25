@@ -40,6 +40,8 @@ AgentSession <-------------------+
         +-- bash -> shell_tools.execute_bash()
         +-- edit_file_section -> file_tools.edit_file_section()
         +-- read_tool_output -> AgentSession output store
+        +-- spawn_subagents -> subagents.run_subagents()
+        +-- verify -> verify-agent read-only pass
         +-- yield -> final answer
 
 main.py --hub
@@ -80,11 +82,13 @@ Allowed actions:
 bash
 edit_file_section
 read_tool_output
+spawn_subagents
+verify
 yield
 ```
 
 All fields are required by the schema. Unused fields are filled with an empty
-string or `0`. This keeps parsing simple and predictable.
+string, `0`, or an empty list. This keeps parsing simple and predictable.
 
 ## Tool Dispatch
 
@@ -100,12 +104,42 @@ action == edit_file_section
 action == read_tool_output
   -> read_tool_output(output_store, output_id, offset)
 
+action == spawn_subagents
+  -> run_subagents(subagent_tasks, evidence=recent_observation_evidence)
+
+action == verify
+  -> run_subagents([{agent_name: verify-agent, task: verification_task}], evidence=recent_observation_evidence)
+
 action == yield
   -> return final answer
 ```
 
 The model only chooses the action and arguments. Python validates and executes
 the tool.
+
+## Autonomous Engineering Loop
+
+The VG branch extends the main agent toward a bounded autonomous engineering
+loop:
+
+```text
+analyze
+  -> delegate read-only analysis when useful
+  -> synthesize findings
+  -> act with safe tools
+  -> verify with commands or verify-agent
+  -> continue if incomplete
+  -> yield only when complete or safely blocked
+```
+
+The loop is still the same `AgentSession.run_task()` loop. The new behavior is
+expressed through additional structured actions and prompt guidance, not through
+a separate orchestrator.
+
+At the start of each user task, the session adds a short bootstrap context with
+workspace path rules, safe discovery guidance, and retry guidance. This helps the
+agent act on the user's current task instead of spending multiple rounds trying
+to discover how to proceed.
 
 ## Context And History
 
@@ -127,6 +161,14 @@ history persistence is not required by Assignment 2.
 
 Long tool outputs are stored separately in `AgentSession.output_store`. The
 model receives only one page at a time through `read_tool_output()`.
+
+The full session history remains in memory, but individual model calls use a
+bounded view controlled by `MAX_CONTEXT_MESSAGES`. The model receives the system
+prompt, agent-name context, a compact notice, and the most recent messages.
+
+Sub-agents keep isolated context/history. They do not receive the full main
+session. Instead, the main session passes a bounded evidence block built from
+recent observations, capped by `SUBAGENT_EVIDENCE_CHARS`.
 
 ## Output Pagination
 
@@ -292,6 +334,51 @@ quit
 These controls make it possible to reduce spending or stop the agent while it is
 running.
 
+## Local Token And Cost Awareness
+
+The local `AgentSession` tracks model calls and total tokens across the main
+agent and read-only sub-agents.
+
+Configured values:
+
+```text
+MAX_TOTAL_TOKENS
+TOKEN_WARNING_RATIO
+ESTIMATED_COST_PER_1K_TOKENS
+```
+
+The session appends usage status to observations so the model can make more
+cost-aware choices. When usage passes the warning ratio, the next observation
+includes a warning. When the hard token cap is reached, the agent stops before
+another model call or before another tool action.
+
+## Blocked Tool Retry Heuristics
+
+The main loop watches observations for blocked or cancelled tool attempts. If
+the same kind of blocked/cancelled attempt repeats, it injects a strategy warning
+into the next observation.
+
+Configured value:
+
+```text
+MAX_BLOCKED_TOOL_ATTEMPTS
+```
+
+The warning tells the agent to stop retrying the same pattern and instead use a
+simpler allowed command, rely on existing evidence, ask a focused question, or
+yield with the safety limitation.
+
+Approval timeout or unavailable stdin is handled separately from explicit user
+rejection. A missing approval does not count as a technical tool failure. With
+`TOOL_APPROVAL_TIMEOUT_SECONDS=0`, approval prompts block as before. With a
+positive timeout, tools remain blocked unless approval arrives before the
+timeout.
+
+Approval prompts also route non-approval text back to the main task prompt. This
+prevents a file path or next task from being lost if it arrives while an approval
+prompt owns stdin. Runtime tracing shows `INPUT` ownership transitions for main
+prompt and approval prompt reads.
+
 ## Configuration
 
 Main config is loaded in `app/config.py` from environment variables and `.env`.
@@ -329,6 +416,15 @@ With `DEBUG_AGENT=true`:
 ```text
 prints structured model decisions
 prints tool observations
+```
+
+With `DEBUG_RUNTIME_TRACING=true`:
+
+```text
+prints concise tagged runtime traces
+separates MAIN, SUB, TOOL, VERIFY, BUDGET, and WARN events
+shows loop iteration, action choices, tool dispatch, approvals, context trimming,
+sub-agent assignments/results, token usage, estimated cost, and yield/stop reasons
 ```
 
 Hub mode:

@@ -15,6 +15,7 @@ AGENT_RESPONSE_FORMAT = {
                         "edit_file_section",
                         "read_tool_output",
                         "spawn_subagents",
+                        "verify",
                         "yield",
                     ],
                 },
@@ -39,6 +40,7 @@ AGENT_RESPONSE_FORMAT = {
                         "required": ["agent_name", "task"],
                     },
                 },
+                "verification_task": {"type": "string"},
                 "answer": {"type": "string"},
             },
             "required": [
@@ -51,6 +53,7 @@ AGENT_RESPONSE_FORMAT = {
                 "output_id",
                 "offset",
                 "subagent_tasks",
+                "verification_task",
                 "answer",
             ],
         },

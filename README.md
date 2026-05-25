@@ -87,10 +87,18 @@ MODEL=gpt-4.1-mini
 AGENT_NAME=igor-petersson-agent
 MAX_STEPS=10
 MAX_TOOL_OUTPUT_CHARS=4000
+MAX_CONTEXT_MESSAGES=40
+MAX_TOTAL_TOKENS=50000
+TOKEN_WARNING_RATIO=0.8
+ESTIMATED_COST_PER_1K_TOKENS=0
+MAX_BLOCKED_TOOL_ATTEMPTS=2
 REQUIRE_TOOL_CONFIRMATION=true
+TOOL_APPROVAL_TIMEOUT_SECONDS=0
 DEBUG_AGENT=false
+DEBUG_RUNTIME_TRACING=false
 MAX_SUBAGENTS=3
 SUBAGENT_TIMEOUT_SECONDS=60
+SUBAGENT_EVIDENCE_CHARS=6000
 ```
 
 Do not commit `.env`.
@@ -205,6 +213,7 @@ bash
 edit_file_section
 read_tool_output
 spawn_subagents
+verify
 yield
 ```
 
@@ -215,6 +224,11 @@ not execute tools for the agent.
 Set `DEBUG_AGENT=true` in `.env` if you want to print the raw structured model
 responses and tool observations for testing or screenshots. Leave it `false`
 for normal interactive use.
+
+Set `DEBUG_RUNTIME_TRACING=true` for concise orchestration traces without raw
+model JSON. Runtime tracing prints tagged terminal lines for main-agent loop
+steps, tool dispatch, sub-agent assignment/results, verification calls, context
+trimming, token usage, and yield/stop reasons.
 
 ---
 
@@ -282,6 +296,7 @@ The sub-agents are intentionally limited in this first VG scaffold:
 
 * they receive one scoped task each
 * they have isolated context/history
+* they receive bounded recent evidence from main-agent observations
 * they share the same project workspace conceptually, but do not edit it
 * they do not run bash
 * they do not edit files
@@ -291,6 +306,12 @@ The sub-agents are intentionally limited in this first VG scaffold:
 
 The main agent remains responsible for deciding whether to spawn more
 sub-agents, use normal tools, or yield to the user.
+
+### `verify`
+
+Runs `verify-agent` as a read-only verification pass after analysis, edits, or
+tests. This is a convenience action for the autonomous engineering loop. It does
+not edit files, run bash, spawn agents, or post to the hub.
 
 ### `yield`
 
@@ -315,6 +336,10 @@ Output continues after this page.
 ```
 
 The model can then request the next slice only when needed.
+
+The agent also keeps full in-session history internally while trimming older
+messages from individual model calls through `MAX_CONTEXT_MESSAGES`. This keeps
+the model call bounded without deleting the session record.
 
 ---
 
@@ -348,6 +373,7 @@ Sub-agent limits are configured through:
 ```env
 MAX_SUBAGENTS=3
 SUBAGENT_TIMEOUT_SECONDS=60
+SUBAGENT_EVIDENCE_CHARS=6000
 ```
 
 Manual test flow:
@@ -364,11 +390,75 @@ The expected flow is:
 2. main agent chooses spawn_subagents
 3. debug/test/verify agents analyze in parallel
 4. structured sub-agent results return as an observation
-5. main agent decides whether to use tools, spawn more agents, or yield
+5. main agent synthesizes findings
+6. main agent acts with safe tools when needed
+7. main agent verifies the result
+8. main agent continues or yields when complete
 ```
 
 This scaffold deliberately does not give sub-agents file-editing, bash, hub
 posting, or recursive spawning ability yet.
+
+Token/cost awareness:
+
+```env
+MAX_TOTAL_TOKENS=50000
+TOKEN_WARNING_RATIO=0.8
+ESTIMATED_COST_PER_1K_TOKENS=0
+```
+
+The main session tracks model calls and token usage, includes sub-agent tokens in
+the same budget, warns near the configured limit, and hard-stops before exceeding
+the cap.
+
+Sub-agent evidence is capped with `SUBAGENT_EVIDENCE_CHARS`. This gives
+sub-agents recent observed facts, such as file contents or tool results, without
+injecting the full main-agent history.
+
+Runtime tracing can be enabled with:
+
+```env
+DEBUG_RUNTIME_TRACING=true
+```
+
+Trace tags separate the orchestration flow:
+
+```text
+[MAIN]    main-agent loop, decisions, context trimming, yield/stop reasons
+[SUB]     sub-agent spawning, task assignment, summaries, timeouts
+[TOOL]    bash/edit/read dispatch and approvals
+[VERIFY]  dedicated verification calls
+[BUDGET]  token/cost accounting
+[WARN]    budget warnings and stop conditions
+```
+
+Task bootstrap and retry behavior:
+
+```env
+MAX_BLOCKED_TOOL_ATTEMPTS=2
+```
+
+Each user task is started with a small bootstrap context that reminds the agent
+how workspace-relative bash paths and project-root-relative edit paths work. If
+blocked or cancelled tool attempts repeat, the main loop injects a strategy
+warning so the agent changes approach instead of burning tokens on the same
+failed exploration pattern.
+
+Approval handling distinguishes explicit rejection from missing input:
+
+```env
+TOOL_APPROVAL_TIMEOUT_SECONDS=0
+```
+
+`0` preserves blocking approval prompts. A positive value makes approval prompts
+time out. Timeout or unavailable stdin is reported as an approval-blocked state,
+not as user rejection, so the agent should ask/wait/yield instead of changing
+technical strategy incorrectly.
+
+If the approval prompt receives non-approval text, such as a file path or a next
+task, that input is routed back to the main task prompt instead of being treated
+as rejection. Runtime tracing shows stdin ownership transitions between the main
+prompt and approval prompt.
 
 ---
 

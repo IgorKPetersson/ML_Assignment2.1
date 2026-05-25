@@ -2,6 +2,8 @@ import argparse
 
 from agent import AgentSession
 from hub_agent import HubAgent
+from input_router import pop_pending_task_input
+from tracing import trace
 
 
 def parse_args():
@@ -29,7 +31,13 @@ def main():
     print("Agent session started. Type 'exit' or 'quit' to stop.")
 
     while True:
-        user_task = input("\nWhat should the agent do?\n> ").strip()
+        user_task = pop_pending_task_input()
+        if not user_task:
+            trace("INPUT", "stdin owner -> main prompt")
+            user_task = input("\nWhat should the agent do?\n> ").strip()
+            trace("INPUT", "stdin owner released by main prompt")
+        else:
+            print(f"\nWhat should the agent do?\n> {user_task}")
 
         if user_task.lower() in {"exit", "quit"}:
             print("Agent session ended.")
