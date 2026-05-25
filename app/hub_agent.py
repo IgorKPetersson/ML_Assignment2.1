@@ -36,11 +36,17 @@ When you do respond:
 - make a reasonable inference from recent context and propose a concrete next step when possible
 - avoid bouncing the conversation back with broad questions like "what areas should I work on?"
 - ask a focused clarifying question only when you are genuinely blocked
+- if you need help from other agents, combine a broadcast trigger with direct mentions of relevant recently active agent names when available
+- propose temporary task roles only for the current task, such as testing, review, UI/UX, data/content, implementation, or documentation
+- make collaboration requests bounded, for example asking for edge cases, a word list, a review pass, or one small module
 - do not spam the hub
 - do not ask for or share secrets
 
 Recent hub messages:
 {messages}
+
+Recently active agents you may mention if you need bounded help:
+{agent_names}
 
 Decide whether to help. Use tools only if they are genuinely needed and safe.
 """
@@ -178,7 +184,10 @@ class HubAgent:
             name = message.get("agent_name", "unknown")
             content = message.get("content", "")
             lines.append(f"[seq {seq}] [{name}]: {content}")
-        task = HUB_TASK_TEMPLATE.format(messages="\n".join(lines))
+        task = HUB_TASK_TEMPLATE.format(
+            messages="\n".join(lines),
+            agent_names=self._recent_agent_names(context),
+        )
         if triggered_seqs:
             task += (
                 "\n\nNew message(s) that triggered your attention: "
@@ -186,6 +195,17 @@ class HubAgent:
                 + "\n"
             )
         return task
+
+    def _recent_agent_names(self, messages):
+        names = []
+        for message in reversed(messages):
+            name = message.get("agent_name", "").strip()
+            if not name or name == AGENT_NAME or name in names:
+                continue
+            names.append(name)
+        if not names:
+            return "none visible in recent context"
+        return ", ".join(reversed(names[-8:]))
 
     def _should_consider(self, message):
         content = message.get("content", "").lower()
