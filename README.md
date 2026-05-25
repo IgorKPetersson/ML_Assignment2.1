@@ -89,6 +89,8 @@ MAX_STEPS=10
 MAX_TOOL_OUTPUT_CHARS=4000
 REQUIRE_TOOL_CONFIRMATION=true
 DEBUG_AGENT=false
+MAX_SUBAGENTS=3
+SUBAGENT_TIMEOUT_SECONDS=60
 ```
 
 Do not commit `.env`.
@@ -181,6 +183,7 @@ This branch implements those requirements.
 | `app/config.py` | Loads env/config values |
 | `app/shell_tools.py` | Validates and executes safe bash commands |
 | `app/file_tools.py` | Safely edits exact file sections |
+| `app/subagents.py` | Minimal read-only local sub-agent runner for VG work |
 | `app/hub_client.py` | REST client for the shared RunPod hub |
 | `app/hub_agent.py` | Part 3 polling, PASS behavior, caps, and hub posting |
 | `config/system_prompt.txt` | System prompt loaded at runtime |
@@ -201,6 +204,7 @@ The model must return one structured decision per round. Allowed actions:
 bash
 edit_file_section
 read_tool_output
+spawn_subagents
 yield
 ```
 
@@ -261,6 +265,33 @@ output id, such as `tool-1`, and returned in character windows.
 
 This avoids losing important information through blind truncation.
 
+### `spawn_subagents`
+
+Runs minimal read-only local sub-agents in parallel and returns their structured
+analysis to the main agent as a normal observation.
+
+Initial sub-agents:
+
+```text
+debug-agent
+test-agent
+verify-agent
+```
+
+The sub-agents are intentionally limited in this first VG scaffold:
+
+* they receive one scoped task each
+* they have isolated context/history
+* they share the same project workspace conceptually, but do not edit it
+* they do not run bash
+* they do not edit files
+* they do not spawn more agents
+* they do not post to the hub
+* they return structured results only
+
+The main agent remains responsible for deciding whether to spawn more
+sub-agents, use normal tools, or yield to the user.
+
 ### `yield`
 
 Stops tool use and answers the user.
@@ -284,6 +315,60 @@ Output continues after this page.
 ```
 
 The model can then request the next slice only when needed.
+
+---
+
+## VG Sub-Agent Scaffold
+
+The `vg-engineering-agent` branch begins extending Part 3 with local parallel
+sub-agents while keeping the existing architecture intact. The first scaffold is
+minimal and read-only.
+
+The main agent can choose the `spawn_subagents` action with scoped tasks for:
+
+```text
+debug-agent
+  Looks for likely bugs, failure modes, and suspicious logic.
+
+test-agent
+  Suggests focused tests, edge cases, and verification strategy.
+
+verify-agent
+  Checks whether the work satisfies stated requirements.
+```
+
+The sub-agent runner lives in:
+
+```text
+app/subagents.py
+```
+
+Sub-agent limits are configured through:
+
+```env
+MAX_SUBAGENTS=3
+SUBAGENT_TIMEOUT_SECONDS=60
+```
+
+Manual test flow:
+
+```text
+SUBAGENT_TEST_FLOW.md
+workspace/subagent_demo/hangman_scenario.txt
+```
+
+The expected flow is:
+
+```text
+1. main agent inspects the simple scenario
+2. main agent chooses spawn_subagents
+3. debug/test/verify agents analyze in parallel
+4. structured sub-agent results return as an observation
+5. main agent decides whether to use tools, spawn more agents, or yield
+```
+
+This scaffold deliberately does not give sub-agents file-editing, bash, hub
+posting, or recursive spawning ability yet.
 
 ---
 
