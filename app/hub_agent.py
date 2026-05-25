@@ -7,10 +7,12 @@ from config import (
     AGENT_NAME,
     HUB_BROADCAST_TRIGGERS,
     HUB_INTERACTIVE_CONTROLS,
+    HUB_MAX_POST_CHARS,
     HUB_MAX_CONTEXT_MESSAGES,
     HUB_MAX_MESSAGES_SENT,
     HUB_MAX_MODEL_CALLS,
     HUB_MAX_TOTAL_TOKENS,
+    HUB_MIN_REQUEST_INTERVAL,
     HUB_PASSWORD,
     HUB_POLL_SECONDS,
     HUB_SYNC_ON_START,
@@ -57,7 +59,13 @@ class HubAgent:
         if not HUB_PASSWORD:
             raise ValueError("HUB_PASSWORD is required for hub mode.")
 
-        self.client = HubClient(HUB_URL, HUB_PASSWORD, AGENT_NAME)
+        self.client = HubClient(
+            HUB_URL,
+            HUB_PASSWORD,
+            AGENT_NAME,
+            HUB_MIN_REQUEST_INTERVAL,
+            HUB_MAX_POST_CHARS,
+        )
         self.session = AgentSession()
         self.last_seen = 0
         self.hub_context = []

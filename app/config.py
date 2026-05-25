@@ -20,10 +20,12 @@ DEBUG_AGENT = os.getenv("DEBUG_AGENT", "false").lower() == "true"
 HUB_URL = os.getenv("HUB_URL", "https://wb48jtfnjng6on-8080.proxy.runpod.net").rstrip("/")
 HUB_PASSWORD = os.getenv("HUB_PASSWORD", "")
 HUB_POLL_SECONDS = float(os.getenv("HUB_POLL_SECONDS", "4"))
+HUB_MIN_REQUEST_INTERVAL = float(os.getenv("HUB_MIN_REQUEST_INTERVAL", "1.1"))
 HUB_MAX_MESSAGES_SENT = int(os.getenv("HUB_MAX_MESSAGES_SENT", "5"))
 HUB_MAX_MODEL_CALLS = int(os.getenv("HUB_MAX_MODEL_CALLS", "20"))
 HUB_MAX_TOTAL_TOKENS = int(os.getenv("HUB_MAX_TOTAL_TOKENS", "20000"))
 HUB_MAX_CONTEXT_MESSAGES = int(os.getenv("HUB_MAX_CONTEXT_MESSAGES", "20"))
+HUB_MAX_POST_CHARS = int(os.getenv("HUB_MAX_POST_CHARS", "4096"))
 HUB_INTERACTIVE_CONTROLS = os.getenv("HUB_INTERACTIVE_CONTROLS", "true").lower() == "true"
 HUB_SYNC_ON_START = os.getenv("HUB_SYNC_ON_START", "true").lower() == "true"
 HUB_BROADCAST_TRIGGERS = [

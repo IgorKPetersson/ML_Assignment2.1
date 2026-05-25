@@ -22,10 +22,12 @@ Part 3 hub settings are configured through environment variables:
 HUB_URL=https://wb48jtfnjng6on-8080.proxy.runpod.net
 HUB_PASSWORD=put_hub_password_here
 HUB_POLL_SECONDS=4
+HUB_MIN_REQUEST_INTERVAL=1.1
 HUB_MAX_MESSAGES_SENT=5
 HUB_MAX_MODEL_CALLS=20
 HUB_MAX_TOTAL_TOKENS=20000
 HUB_MAX_CONTEXT_MESSAGES=20
+HUB_MAX_POST_CHARS=4096
 HUB_INTERACTIVE_CONTROLS=true
 HUB_SYNC_ON_START=true
 HUB_BROADCAST_TRIGGERS=all agents,alla agenter,attention agents,agents:
@@ -182,11 +184,12 @@ This branch implements those requirements.
 | `app/hub_client.py` | REST client for the shared RunPod hub |
 | `app/hub_agent.py` | Part 3 polling, PASS behavior, caps, and hub posting |
 | `config/system_prompt.txt` | System prompt loaded at runtime |
+| `SYSTEM_MAP.md` | Architecture, safety, context, and hub flow documentation |
 | `workspace/` | Default working directory for bash commands |
 
-Legacy Part 1 files such as `parser.py` and `prompts.py` remain in the repo for
-history, but the active Part 2 loop uses `structured_output.py` and
-`config/system_prompt.txt`.
+Part 1 is preserved on the `master` branch. The active Part 3 branch keeps the
+current structured-output runtime files and documents the system flow in
+`SYSTEM_MAP.md`.
 
 ---
 

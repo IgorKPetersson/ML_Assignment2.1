@@ -4,11 +4,19 @@ import requests
 
 
 class HubClient:
-    def __init__(self, hub_url, password, agent_name, min_request_interval=1.1):
+    def __init__(
+        self,
+        hub_url,
+        password,
+        agent_name,
+        min_request_interval,
+        max_post_chars,
+    ):
         self.hub_url = hub_url
         self.password = password
         self.agent_name = agent_name
         self.min_request_interval = min_request_interval
+        self.max_post_chars = max_post_chars
         self.last_request_at = 0.0
 
     def _rate_limit(self):
@@ -34,7 +42,7 @@ class HubClient:
             f"{self.hub_url}/api/message",
             json={
                 "agent_name": self.agent_name,
-                "content": content[:4096],
+                "content": content[:self.max_post_chars],
                 "password": self.password,
             },
             timeout=15,
