@@ -1,0 +1,27 @@
+Fake Hangman Scenario For Sub-Agent Testing
+
+Goal:
+Build a small command-line Hangman game.
+
+Basic requirements:
+- The game chooses one secret word from a short safe word list.
+- The player guesses one letter at a time.
+- Correct guesses reveal matching letters.
+- Wrong guesses reduce remaining attempts.
+- The player wins when all letters are revealed.
+- The player loses when attempts reach zero.
+
+Current rough plan:
+- Store the secret word as lowercase text.
+- Store guessed letters in a list.
+- For each player guess, check whether the letter is in the word.
+- If the guess is not in the word, subtract one attempt.
+- Print the current masked word after each guess.
+
+Known uncertainty:
+- The plan does not say what happens if the player guesses the same wrong letter twice.
+- The plan does not say whether uppercase input should be normalized.
+- The plan does not say how non-letter input should be handled.
+- The plan does not say exactly when win/loss state is checked.
+
+Please analyze this scenario only. Do not edit files.
