@@ -15,6 +15,7 @@ from config import (
 from file_tools import edit_file_section
 from shell_tools import execute_bash
 from structured_output import AGENT_RESPONSE_FORMAT
+from subagents import run_subagents
 
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -85,6 +86,12 @@ def observation_for(decision, output_store):
 
     if action == "read_tool_output":
         return read_tool_output(output_store, decision["output_id"], decision["offset"])
+
+    if action == "spawn_subagents":
+        return format_tool_output(
+            run_subagents(decision["subagent_tasks"]),
+            output_store,
+        )
 
     return f"Unknown action: {action}"
 

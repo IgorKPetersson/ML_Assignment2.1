@@ -30,6 +30,7 @@ Available actions:
 - bash: run a safe, approved shell command for inspection or lightweight verification.
 - edit_file_section: replace one exact section of an allowed file.
 - read_tool_output: read another page from a previous long tool output.
+- spawn_subagents: run read-only local sub-agents in parallel for scoped analysis.
 - yield: stop using tools and answer the user.
 
 Action rules:
@@ -41,9 +42,10 @@ Action rules:
 - Use edit_file_section only when the requested change is directly related to the user's SWE task.
 - File edits use project-root-relative paths. For file edits, use paths like workspace/sample_project/calculator.py.
 - Use read_tool_output only when a previous output page says more content is available and the next slice is actually needed.
+- Use spawn_subagents when parallel read-only analysis would help. Available sub-agents are debug-agent, test-agent, and verify-agent. Give each sub-agent a narrow task. Sub-agents cannot edit files, run tools, spawn agents, or post to the hub.
 - Use yield when you have enough information to answer or when the request should be refused.
 
 Structured output rules:
 - Return only the required structured response.
-- For unused fields, return an empty string or 0.
+- For unused fields, return an empty string, 0, or an empty list.
 - Do not include extra text outside the structured response.

@@ -17,6 +17,9 @@ MAX_TOOL_OUTPUT_CHARS = int(os.getenv("MAX_TOOL_OUTPUT_CHARS", "4000"))
 REQUIRE_TOOL_CONFIRMATION = os.getenv("REQUIRE_TOOL_CONFIRMATION", "true").lower() == "true"
 DEBUG_AGENT = os.getenv("DEBUG_AGENT", "false").lower() == "true"
 
+MAX_SUBAGENTS = int(os.getenv("MAX_SUBAGENTS", "3"))
+SUBAGENT_TIMEOUT_SECONDS = int(os.getenv("SUBAGENT_TIMEOUT_SECONDS", "60"))
+
 HUB_URL = os.getenv("HUB_URL", "https://wb48jtfnjng6on-8080.proxy.runpod.net").rstrip("/")
 HUB_PASSWORD = os.getenv("HUB_PASSWORD", "")
 HUB_POLL_SECONDS = float(os.getenv("HUB_POLL_SECONDS", "4"))

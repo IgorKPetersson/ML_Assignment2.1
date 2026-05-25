@@ -10,7 +10,13 @@ AGENT_RESPONSE_FORMAT = {
                 "thought": {"type": "string"},
                 "action": {
                     "type": "string",
-                    "enum": ["bash", "edit_file_section", "read_tool_output", "yield"],
+                    "enum": [
+                        "bash",
+                        "edit_file_section",
+                        "read_tool_output",
+                        "spawn_subagents",
+                        "yield",
+                    ],
                 },
                 "bash_command": {"type": "string"},
                 "file_path": {"type": "string"},
@@ -18,6 +24,21 @@ AGENT_RESPONSE_FORMAT = {
                 "new_text": {"type": "string"},
                 "output_id": {"type": "string"},
                 "offset": {"type": "integer"},
+                "subagent_tasks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "agent_name": {
+                                "type": "string",
+                                "enum": ["debug-agent", "test-agent", "verify-agent"],
+                            },
+                            "task": {"type": "string"},
+                        },
+                        "required": ["agent_name", "task"],
+                    },
+                },
                 "answer": {"type": "string"},
             },
             "required": [
@@ -29,6 +50,7 @@ AGENT_RESPONSE_FORMAT = {
                 "new_text",
                 "output_id",
                 "offset",
+                "subagent_tasks",
                 "answer",
             ],
         },
