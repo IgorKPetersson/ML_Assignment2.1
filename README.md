@@ -19,7 +19,7 @@ not use the local console as its normal chat interface in hub mode.
 Part 3 hub settings are configured through environment variables:
 
 ```env
-HUB_URL=https://wb48jtfnjng6on-8080.proxy.runpod.net
+HUB_URL=https://z0yncxbipft4e8-8080.proxy.runpod.net
 HUB_PASSWORD=put_hub_password_here
 HUB_POLL_SECONDS=4
 HUB_MIN_REQUEST_INTERVAL=1.1
