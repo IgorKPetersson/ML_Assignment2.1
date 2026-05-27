@@ -12,7 +12,7 @@ from config import (
     REQUIRE_TOOL_CONFIRMATION,
     SYSTEM_PROMPT_PATH,
 )
-from file_tools import edit_file_section
+from file_tools import create_file, edit_file_section
 from shell_tools import execute_bash
 from structured_output import AGENT_RESPONSE_FORMAT
 
@@ -78,6 +78,14 @@ def observation_for(decision, output_store):
         result = edit_file_section(
             decision["file_path"],
             decision["old_text"],
+            decision["new_text"],
+            require_confirmation=REQUIRE_TOOL_CONFIRMATION,
+        )
+        return format_tool_output(result, output_store)
+
+    if action == "create_file":
+        result = create_file(
+            decision["file_path"],
             decision["new_text"],
             require_confirmation=REQUIRE_TOOL_CONFIRMATION,
         )

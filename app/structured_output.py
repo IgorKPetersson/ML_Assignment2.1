@@ -10,7 +10,7 @@ AGENT_RESPONSE_FORMAT = {
                 "thought": {"type": "string"},
                 "action": {
                     "type": "string",
-                    "enum": ["bash", "edit_file_section", "read_tool_output", "yield"],
+                    "enum": ["bash", "create_file", "edit_file_section", "read_tool_output", "yield"],
                 },
                 "bash_command": {"type": "string"},
                 "file_path": {"type": "string"},

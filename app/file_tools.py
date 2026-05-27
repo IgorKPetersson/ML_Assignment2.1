@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from config import BASE_DIR, EDITABLE_PATHS, REQUIRE_TOOL_CONFIRMATION
+from config import BASE_DIR, EDITABLE_PATHS, REQUIRE_TOOL_CONFIRMATION, WORKSPACE_DIR
 from shell_tools import is_secret_env_path
 
 
@@ -80,3 +80,35 @@ def edit_file_section(file_path, old_text, new_text, require_confirmation=REQUIR
     path.write_text(updated, encoding="utf-8")
 
     return f"Edited one section in {path.relative_to(BASE_DIR)}."
+
+
+def create_file(file_path, new_text, require_confirmation=REQUIRE_TOOL_CONFIRMATION):
+    path, error = _resolve_project_path(file_path)
+    if error:
+        return error
+
+    workspace = WORKSPACE_DIR.resolve()
+    if path != workspace and workspace not in path.parents:
+        return f"Create blocked: file is outside workspace: {file_path}"
+
+    if not new_text:
+        return "Create blocked: new_text must not be empty."
+
+    if path.exists():
+        return f"Create blocked: file already exists: {file_path}"
+
+    if not path.parent.exists():
+        return f"Create blocked: parent directory does not exist: {path.parent.relative_to(BASE_DIR)}"
+
+    if require_confirmation:
+        print(f"\nCreate file? [y/n]\n{path}\n")
+        print("Content:\n")
+        print(new_text)
+        confirm = input("> ")
+
+        if confirm.strip().lower() != "y":
+            return "File creation cancelled by user."
+
+    path.write_text(new_text, encoding="utf-8")
+
+    return f"Created file {path.relative_to(BASE_DIR)}."
