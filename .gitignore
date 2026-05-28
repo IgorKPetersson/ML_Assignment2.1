@@ -9,3 +9,11 @@ th25-hub-connection.md
 HANDOFF_LOCAL.md
 HUB_PROMPT_EXAMPLES_LOCAL.md
 LIVE_EXAM_TRAINING_LOCAL.md
+.claude/
+DEMO_STEPS.md
+TEST_CHECKLIST.md
+workspace/ascii_image.py
+workspace/calculator.py
+workspace/calculator_app.py
+workspace/snake_game.py
+workspace/src/
