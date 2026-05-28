@@ -97,11 +97,16 @@ def create_file(file_path, new_text, require_confirmation=REQUIRE_TOOL_CONFIRMAT
     if path.exists():
         return f"Create blocked: file already exists: {file_path}"
 
-    if not path.parent.exists():
-        return f"Create blocked: parent directory does not exist: {path.parent.relative_to(BASE_DIR)}"
+    missing_parent = not path.parent.exists()
+    if missing_parent:
+        parent_relative = path.parent.relative_to(BASE_DIR)
+    else:
+        parent_relative = None
 
     if require_confirmation:
         print(f"\nCreate file? [y/n]\n{path}\n")
+        if missing_parent:
+            print(f"Missing directories will be created under: {parent_relative}\n")
         print("Content:\n")
         print(new_text)
         confirm = input("> ")
@@ -109,6 +114,12 @@ def create_file(file_path, new_text, require_confirmation=REQUIRE_TOOL_CONFIRMAT
         if confirm.strip().lower() != "y":
             return "File creation cancelled by user."
 
+    if missing_parent:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
     path.write_text(new_text, encoding="utf-8")
+
+    if missing_parent:
+        return f"Created directory {parent_relative} and file {path.relative_to(BASE_DIR)}."
 
     return f"Created file {path.relative_to(BASE_DIR)}."

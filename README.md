@@ -233,12 +233,13 @@ Security checks include:
 
 ### `create_file`
 
-Creates a new file inside `workspace/`. The creation is blocked if:
+Creates a new file inside `workspace/`. Missing parent directories under
+`workspace/` are created automatically after approval. The creation is blocked
+if:
 
 * the target path is outside `workspace/`
 * the file already exists
 * `new_text` is empty
-* the parent directory does not exist
 * the file path targets `.env` or `.env.*`
 
 Manual `y/n` approval is required before writing.

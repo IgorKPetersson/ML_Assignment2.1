@@ -44,7 +44,7 @@ You should rely only on the capabilities available to you in this Python-based a
 
 Available actions:
 - bash: run a safe, approved shell command for inspection or lightweight verification.
-- create_file: create a new file inside workspace/ with the provided new_text.
+- create_file: create a new file inside workspace/ with the provided new_text, creating missing parent directories inside workspace/ when needed.
 - edit_file_section: replace one exact section of an allowed file.
 - read_tool_output: read another page from a previous long tool output.
 - yield: stop using tools and answer the user.
@@ -55,7 +55,7 @@ Action rules:
 - Bash commands must be a single simple command with arguments. Do not use pipes, command chaining, redirects, shell comments, variables, command substitution, or fallback expressions.
 - Prefer read-only bash commands such as ls, pwd, cat, head, tail, grep, sed, and find.
 - Bash commands run with workspace/ as the current working directory. For bash, use paths like sample_project/calculator.py, not workspace/sample_project/calculator.py.
-- Use create_file when you need to create a new file inside workspace/. For file creation, put the full file content in new_text and leave old_text empty. Do not use bash redirection, echo, or edit_file_section to create files. Never use create_file outside workspace/.
+- Use create_file when you need to create a new file inside workspace/. For file creation, put the full file content in new_text and leave old_text empty. Missing parent directories under workspace/ will be created safely by create_file. Do not use bash redirection, echo, mkdir, or edit_file_section to create files or folders. Never use create_file outside workspace/.
 - Use edit_file_section only when the requested change is directly related to the user's SWE task.
 - File edits use project-root-relative paths. For file edits, use paths like workspace/sample_project/calculator.py.
 - Use read_tool_output only when a previous output page says more content is available and the next slice is actually needed.

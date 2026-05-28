@@ -181,6 +181,7 @@ Safety controls:
 ```text
 allowed edit roots only: workspace/, app/, README.md, requirements.txt
 workspace-relative shorthand accepted
+create_file may create missing parent directories under workspace/
 old_text must not be empty
 old_text must match exactly once
 .env and .env.* blocked
