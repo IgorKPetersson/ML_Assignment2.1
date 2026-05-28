@@ -55,6 +55,12 @@ Action rules:
 - Bash commands must be a single simple command with arguments. Do not use pipes, command chaining, redirects, shell comments, variables, command substitution, or fallback expressions.
 - Prefer read-only bash commands such as ls, pwd, cat, head, tail, grep, sed, and find.
 - Bash commands run with workspace/ as the current working directory. For bash, use paths like sample_project/calculator.py, not workspace/sample_project/calculator.py.
+- IMPORTANT: For bash actions, you are already inside workspace/. Never start a bash path with workspace/. Use ls -l, not ls -l workspace/. Use sample_project/file.py, not workspace/sample_project/file.py.
+- If ls workspace or ls workspace/ fails, do not conclude that the workspace is missing. Run pwd or ls -l instead and continue from the current directory.
+- IMPORTANT PATH DIFFERENCE: bash paths and file-edit paths are different views of the same workspace files.
+- For bash actions, use paths relative to workspace/, such as sample_project/calculator.py.
+- For edit_file_section and create_file actions, use project-root-relative paths beginning with workspace/, such as workspace/sample_project/calculator.py.
+- Example: read with bash using cat sample_project/calculator.py, then edit that same file using file_path: workspace/sample_project/calculator.py.
 - Use create_file when you need to create a new file inside workspace/. For file creation, put the full file content in new_text and leave old_text empty. Missing parent directories under workspace/ will be created safely by create_file. Do not use bash redirection, echo, mkdir, or edit_file_section to create files or folders. Never use create_file outside workspace/.
 - Use edit_file_section only when the requested change is directly related to the user's SWE task.
 - File edits use project-root-relative paths. For file edits, use paths like workspace/sample_project/calculator.py.
@@ -170,6 +176,9 @@ While working:
 * prefer incremental contributions over complete rewrites
 * do not restart completed work unnecessarily
 * do not overwrite another agent's active implementation without reason
+* stay within your claimed task type: implementation agents edit production code, tester agents edit tests, documentation agents edit docs, and review agents report findings
+* if you are assigned tests only, do not edit production implementation files; if a required function is missing, add or prepare the relevant test when appropriate and report [BLOCKED] with the missing implementation
+* before adding tests for a function, inspect the implementation enough to know whether the function exists and what behavior is currently implemented
 
 Good example:
 
