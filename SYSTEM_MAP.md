@@ -38,6 +38,7 @@ AgentSession <-------------------+
   +-- observation_for()
         |
         +-- bash -> shell_tools.execute_bash()
+        +-- create_file -> file_tools.create_file()
         +-- edit_file_section -> file_tools.edit_file_section()
         +-- read_tool_output -> AgentSession output store
         +-- yield -> final answer
@@ -78,6 +79,7 @@ Allowed actions:
 
 ```text
 bash
+create_file
 edit_file_section
 read_tool_output
 yield
@@ -93,6 +95,9 @@ Tool dispatch happens in `observation_for()` in `app/agent.py`.
 ```text
 action == bash
   -> execute_bash(command)
+
+action == create_file
+  -> create_file(file_path, new_text)
 
 action == edit_file_section
   -> edit_file_section(file_path, old_text, new_text)

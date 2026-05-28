@@ -199,6 +199,7 @@ The model must return one structured decision per round. Allowed actions:
 
 ```text
 bash
+create_file
 edit_file_section
 read_tool_output
 yield
@@ -229,6 +230,18 @@ Security checks include:
 * `shell=False`
 * execution from `workspace/`
 * timeout protection
+
+### `create_file`
+
+Creates a new file inside `workspace/`. The creation is blocked if:
+
+* the target path is outside `workspace/`
+* the file already exists
+* `new_text` is empty
+* the parent directory does not exist
+* the file path targets `.env` or `.env.*`
+
+Manual `y/n` approval is required before writing.
 
 ### `edit_file_section`
 
