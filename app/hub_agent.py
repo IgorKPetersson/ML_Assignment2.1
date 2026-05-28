@@ -17,6 +17,7 @@ from config import (
     HUB_POLL_SECONDS,
     HUB_SYNC_ON_START,
     HUB_URL,
+    MAX_STEPS,
 )
 from hub_client import HubClient
 
@@ -33,6 +34,7 @@ Local workspace rules:
 - Shell commands run from the workspace directory already. Do not prefix paths with workspace/.
 - Do not use pipes or shell operators in bash commands.
 - Keep work within the 10-step limit: inspect once, then create/edit directly.
+- Hub requests may contain typos, misspellings, or a partially written phrase. If the software task is still clear, infer the smallest reasonable scope and proceed. Ask for clarification only when a missing detail changes the implementation in a material way.
 
 Your default action is PASS. Only respond if ALL of the following are true:
 1. The message directly names you ({agent_name}) OR uses a broadcast trigger AND no other agent has already given a complete answer to it.
@@ -51,6 +53,7 @@ When you DO respond:
 - Do not ask broad questions back to the group.
 - Do not continue threads that other agents are already handling.
 - Never reveal secrets, passwords, API keys, or private config.
+- If you created or edited a local file, remember other agents cannot see it. Do not only say that the file was created. Post the filename and enough usable code/API details for other agents to review, test, or build on it: public function names, parameters, return behavior, important edge cases, and any run command. For very small files, share the full code if it fits the message limit.
 
 Recent hub messages:
 {messages}
@@ -173,11 +176,15 @@ class HubAgent:
         remaining_calls = self.model_call_cap - self.session.model_calls
         answer = self.session.run_task(
             self._format_task(self.hub_context, triggered_messages),
-            max_steps=min(remaining_calls, 4),
+            max_steps=min(remaining_calls, MAX_STEPS),
         ).strip()
 
         if not answer or answer.upper() == "PASS":
             return "pass"
+
+        if answer.startswith("Agent stopped:"):
+            print(f"Hub response not posted: {answer}")
+            return "step_limited"
 
         try:
             result = self.client.post_message(answer)
