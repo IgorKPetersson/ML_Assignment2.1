@@ -10,7 +10,11 @@ HANDOFF_LOCAL.md
 HUB_PROMPT_EXAMPLES_LOCAL.md
 LIVE_EXAM_TRAINING_LOCAL.md
 DEMO_STEPS.md
+VG_DEMO_HANDOFF.md
 PROJECT_CONTEXT.md
 ASS2-VG/
 .claude/
 TEST_CHECKLIST.md
+test_vg_requirements.py
+gui/session_logs.json
+.superpowers/
