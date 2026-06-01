@@ -348,9 +348,13 @@ ESTIMATED_COST_PER_1K_TOKENS
 ```
 
 The session appends usage status to observations so the model can make more
-cost-aware choices. When usage passes the warning ratio, the next observation
-includes a warning. When the hard token cap is reached, the agent stops before
-another model call or before another tool action.
+cost-aware choices, and it prints the same status in the local console UI after
+each tool/model round. The status includes `estimated_cost_usd`, calculated from
+`total_tokens / 1000 * ESTIMATED_COST_PER_1K_TOKENS`, plus the configured cost
+rate. Hub mode exposes the same cost summary through the `status` control.
+When usage passes the warning ratio, the next observation includes a warning.
+When the hard token cap is reached, the agent stops before another model call or
+before another tool action.
 
 ## Blocked Tool Retry Heuristics
 
@@ -409,6 +413,7 @@ Normal mode:
 ```text
 prints final answer
 prints manual approval prompts
+prints live session usage, token count, estimated USD cost, and cost rate
 ```
 
 With `DEBUG_AGENT=true`:

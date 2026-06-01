@@ -90,7 +90,7 @@ MAX_TOOL_OUTPUT_CHARS=4000
 MAX_CONTEXT_MESSAGES=40
 MAX_TOTAL_TOKENS=50000
 TOKEN_WARNING_RATIO=0.8
-ESTIMATED_COST_PER_1K_TOKENS=0
+ESTIMATED_COST_PER_1K_TOKENS=0.0010
 MAX_BLOCKED_TOOL_ATTEMPTS=2
 REQUIRE_TOOL_CONFIRMATION=true
 TOOL_APPROVAL_TIMEOUT_SECONDS=0
@@ -404,12 +404,14 @@ Token/cost awareness:
 ```env
 MAX_TOTAL_TOKENS=50000
 TOKEN_WARNING_RATIO=0.8
-ESTIMATED_COST_PER_1K_TOKENS=0
+ESTIMATED_COST_PER_1K_TOKENS=0.0010
 ```
 
 The main session tracks model calls and token usage, includes sub-agent tokens in
 the same budget, warns near the configured limit, and hard-stops before exceeding
-the cap.
+the cap. It also prints visible session statistics after each tool/model round,
+including `estimated_cost_usd` computed from
+`ESTIMATED_COST_PER_1K_TOKENS`.
 
 Sub-agent evidence is capped with `SUBAGENT_EVIDENCE_CHARS`. This gives
 sub-agents recent observed facts, such as file contents or tool results, without

@@ -188,18 +188,20 @@ class AgentSession:
         return preserved + [compact_notice] + recent
 
     def usage_summary(self):
-        estimated_cost = (
-            self.total_tokens / 1000 * ESTIMATED_COST_PER_1K_TOKENS
-            if ESTIMATED_COST_PER_1K_TOKENS > 0
-            else 0
-        )
+        estimated_cost = self.estimated_cost_usd()
         summary = (
             f"Usage status: model_calls={self.model_calls}, "
-            f"tokens={self.total_tokens}/{MAX_TOTAL_TOKENS}"
+            f"tokens={self.total_tokens}/{MAX_TOTAL_TOKENS}, "
+            f"estimated_cost_usd=${estimated_cost:.6f}, "
+            f"cost_rate_per_1k_tokens=${ESTIMATED_COST_PER_1K_TOKENS:.6f}"
         )
-        if ESTIMATED_COST_PER_1K_TOKENS > 0:
-            summary += f", estimated_cost={estimated_cost:.4f}"
         return summary
+
+    def estimated_cost_usd(self):
+        return self.total_tokens / 1000 * ESTIMATED_COST_PER_1K_TOKENS
+
+    def print_usage_status(self):
+        print(f"\n{self.usage_summary()}\n")
 
     def budget_warning(self):
         warning_at = int(MAX_TOTAL_TOKENS * TOKEN_WARNING_RATIO)
@@ -314,10 +316,11 @@ class AgentSession:
             trace("MAIN", f"loop iteration {step + 1}/{step_limit}", self.usage_summary())
             if MAX_TOTAL_TOKENS > 0 and self.total_tokens >= MAX_TOTAL_TOKENS:
                 message = (
-                    "Agent stopped: maximum token budget reached before the next "
+                    "Hard budget cap reached. Agent stopped before the next "
                     "model call."
                 )
                 trace("WARN", "hard token cap before model call", self.usage_summary())
+                self.print_usage_status()
                 print(f"\n{message}\n")
                 return message
 
@@ -343,16 +346,18 @@ class AgentSession:
 
             if action == "yield":
                 trace("MAIN", "yield", decision["answer"])
+                self.print_usage_status()
                 print("\nAgent finished.\n")
                 print(decision["answer"])
                 return decision["answer"]
 
             if MAX_TOTAL_TOKENS > 0 and self.total_tokens >= MAX_TOTAL_TOKENS:
                 message = (
-                    "Agent stopped: maximum token budget reached after the latest "
-                    "model call."
+                    "Hard budget cap reached. Agent stopped after the latest "
+                    "model call and before any further tool step."
                 )
                 trace("WARN", "hard token cap after model call", self.usage_summary())
+                self.print_usage_status()
                 print(f"\n{message}\n")
                 return message
 
@@ -366,6 +371,7 @@ class AgentSession:
                 trace("BUDGET", "sub-agent tokens added", f"tool_tokens={tool_tokens}; {self.usage_summary()}")
             warning = self.budget_warning()
             if warning:
+                print(f"\n{warning}\n{self.usage_summary()}\n")
                 observation = f"{observation}\n\n{warning}"
             strategy_warning = self.failure_guidance(observation)
             if strategy_warning:
@@ -381,9 +387,11 @@ class AgentSession:
                 "role": "user",
                 "content": f"Observation:\n{observation}",
             })
+            self.print_usage_status()
 
         message = "Agent stopped: maximum step count reached."
         trace("WARN", "max step count reached", self.usage_summary())
+        self.print_usage_status()
         print(f"\n{message}\n")
         return message
 

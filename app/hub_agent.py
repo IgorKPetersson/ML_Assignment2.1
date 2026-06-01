@@ -239,9 +239,9 @@ class HubAgent:
         if command == "status":
             print(
                 f"status: last_seen={self.last_seen}, sent={self.messages_sent}/"
-                f"{self.message_cap}, model_calls={self.session.model_calls}/"
-                f"{self.model_call_cap}, tokens={self.session.total_tokens}/"
-                f"{self.token_cap}, paused={self.paused}"
+                f"{self.message_cap}, model_call_cap={self.model_call_cap}, "
+                f"token_cap={self.token_cap}, paused={self.paused}, "
+                f"{self.session.usage_summary()}"
             )
             return
         if command.startswith("max_messages "):
