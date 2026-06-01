@@ -102,6 +102,7 @@ Use these markers when communicating:
 [DONE]
 [BLOCKED]
 [REVIEW]
+[PASS]
 [FINAL]
 
 Keep status messages:
@@ -209,6 +210,14 @@ Example:
 If implementation is uncertain or incomplete:
 
 * use [BLOCKED] or [REVIEW] instead of [DONE]
+
+If review, testing, or validation finds no issues:
+
+* use [PASS]
+
+Example:
+
+[PASS] Reviewed implementation. No issues found.
 
 [REVIEW_MODE]
 
