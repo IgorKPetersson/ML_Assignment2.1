@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-PORT = 7680
+PORT = 8765
 GUI_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = GUI_DIR.parent
 LOG_FILE = GUI_DIR / 'session_logs.json'
@@ -112,10 +112,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', content_type + '; charset=utf-8')
             self.send_header('Content-Length', str(len(data)))
+            self.send_header('Connection', 'close')
             self.end_headers()
             self.wfile.write(data)
         except FileNotFoundError:
             self.send_response(404)
+            self.send_header('Connection', 'close')
             self.end_headers()
 
     def _serve_json(self, data):
@@ -123,6 +125,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
+        self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(body)
 
@@ -160,11 +163,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def _stream_agent(self, task):
         self._start_stream()
+        # Bypass main.py's interactive loop — call run_agent() directly so there
+        # is no second input() call and no EOFError after the task completes.
+        one_shot = (
+            'import sys; sys.path.insert(0,"/agent/app"); '
+            'from agent import run_agent; '
+            f'run_agent({repr(task)})'
+        )
         cmd = [
             'docker', 'compose', 'run', '--rm',
             '-e', 'DEBUG_RUNTIME_TRACING=true',
             '-e', 'ESTIMATED_COST_PER_1K_TOKENS=0.0010',
             'react-agent',
+            'python', '-c', one_shot,
         ]
         start = datetime.datetime.now()
         output_lines = []
@@ -172,18 +183,13 @@ class Handler(BaseHTTPRequestHandler):
         try:
             proc = subprocess.Popen(
                 cmd, cwd=PROJECT_ROOT,
-                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, bufsize=1,
             )
-            proc.stdin.write(task + '\n')
-            proc.stdin.flush()
-            proc.stdin.close()
 
             for line in proc.stdout:
                 self._write_chunk(line)
                 output_lines.append(line.rstrip())
-
             proc.wait()
         except Exception as e:
             err = f'Error running agent: {e}\n'

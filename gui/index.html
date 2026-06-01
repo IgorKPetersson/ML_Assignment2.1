@@ -248,6 +248,12 @@
         </div>
       </div>
 
+      <!-- Agent status banner -->
+      <div id="agent-banner" style="margin:0 12px 6px;padding:8px 14px;border-radius:0 5px 5px 0;border-left:2px solid var(--tx3);background:var(--glass);border-top:1px solid var(--b1);border-right:1px solid var(--gb);border-bottom:1px solid var(--gb);font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:10px;">
+        <div class="dot" id="banner-dot"></div>
+        <span id="banner-text">Redo — ange en uppgift ovan och tryck ▶ Run Task</span>
+      </div>
+
       <!-- Output log -->
       <div class="glass green" id="log-area" style="flex:1;margin:0 12px 10px;padding:10px 14px;overflow-y:auto;font-size:11px;line-height:1.8;">
         <div id="log-empty" style="color:var(--tx3);font-style:italic;">No output yet — run a task or click a demo above.</div>
@@ -333,6 +339,8 @@
 'use strict';
 
 // ── State ────────────────────────────────────────────────────────────────────
+let _inJsonBlock = false; // skip STRUCTURED MODEL RESPONSE blocks
+
 const S = {
   tokens:0, cost:0, calls:0, maxTokens:200000,
   messages:2, trimmed:0, outputs:0,
@@ -395,8 +403,25 @@ function setAgentStatus(agent, status) {
 
 function setMainStatus(status) {
   setAgentStatus('main', status);
-  $('hdr-dot').className    = 'dot ' + (status==='running'?'amber':status==='idle'?'green':'red');
+  $('hdr-dot').className      = 'dot ' + (status==='running'?'amber':status==='idle'?'green':'red');
   $('hdr-status').textContent = status;
+
+  const banner = $('agent-banner');
+  const bdot   = $('banner-dot');
+  const btext  = $('banner-text');
+  if (status === 'running') {
+    banner.style.borderLeftColor = 'var(--amber)';
+    bdot.className = 'dot amber';
+    btext.style.color = 'var(--amber)';
+    btext.textContent = 'Agenten jobbar...';
+  } else {
+    banner.style.borderLeftColor = 'var(--green)';
+    bdot.className = 'dot green';
+    btext.style.color = 'var(--green)';
+    btext.textContent = status === 'idle' && S.calls > 0
+      ? 'Klar ✓ — agenten är färdig'
+      : 'Redo — ange en uppgift ovan och tryck ▶ Run Task';
+  }
 }
 
 // ── Log ───────────────────────────────────────────────────────────────────────
@@ -421,9 +446,22 @@ function clearLog() {
 }
 
 // ── Parse agent output ────────────────────────────────────────────────────────
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+
 function parseLine(line) {
-  line = line.trim();
+  line = line.replace(ANSI_RE, '').trim();
   if (!line) return;
+  if (/^[0-9A-Fa-f]{1,4}$/.test(line)) return; // chunk-size artefact
+
+  // Filter STRUCTURED MODEL RESPONSE JSON blocks
+  if (line === 'STRUCTURED MODEL RESPONSE:') { _inJsonBlock = true; return; }
+  if (_inJsonBlock) { if (line === '}') _inJsonBlock = false; return; }
+
+  // Filter observation pagination headers
+  if (line === 'OBSERVATION:') return;
+  if (line.startsWith('Output page for tool-')) return;
+  if (line.startsWith('Use read_tool_output')) return;
+  if (line === 'End of output.') return;
 
   if (line.startsWith('Usage status:')) {
     const m1 = line.match(/model_calls=(\d+)/);
