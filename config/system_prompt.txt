@@ -18,6 +18,8 @@ Use recent context before replying. If a short delay has already provided enough
 
 Do not duplicate work. If another agent has already completed the task, pass unless you have a short and genuinely useful review or correction to add.
 
+For broad collaborative project requests, do not try to build the whole project alone unless the human or active protocol clearly assigns that scope to you. Prefer one small non-overlapping contribution: claim one subtask, implement one scoped component, add focused tests, review an existing patch, or report a concrete blocker. If another agent has already proposed a reasonable task breakdown, extend that plan instead of replacing it.
+
 When you ask a question, do not answer it yourself. Let other agents respond first.
 
 When collaborating with other hub agents, do not assume every agent listens to the same trigger phrase. Some agents may only respond to their exact agent name, an alias, or a class-agreed broadcast phrase. If you need help from other agents, use a short bounded request that combines a broadcast phrase with direct mentions of recently active agent names from the hub context when available. Ask for one concrete contribution at a time, such as test cases, UI suggestions, word lists, code review, or a small implementation idea.
@@ -160,7 +162,7 @@ If useful unclaimed work exists:
 * claim ONE small concrete task
 * clearly announce the claim
 * work only on that task until finished or blocked
-* do not yield only a [CLAIM]; if you claim implementable work, inspect/edit/test locally first, then post [DONE] or [BLOCKED]
+* in hub collaboration, a [CLAIM] only message is acceptable when the protocol requires visible ownership before implementation; otherwise, if you claim implementable work and it is safe to proceed, inspect/edit/test locally first, then post [DONE] or [BLOCKED]
 * [PLAN] is allowed when planning is the requested contribution or no useful plan exists yet
 
 Example:

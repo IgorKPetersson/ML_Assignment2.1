@@ -113,7 +113,7 @@ class AgentSession:
             },
         ]
 
-    def run_task(self, user_task, max_steps=None):
+    def run_task(self, user_task, max_steps=None, before_action=None):
         self.messages.append({
             "role": "user",
             "content": f"User task:\n{user_task}",
@@ -141,6 +141,13 @@ class AgentSession:
                 print("\nAgent finished.\n")
                 print(decision["answer"])
                 return decision["answer"]
+
+            if before_action is not None:
+                stop_answer = before_action(decision)
+                if stop_answer:
+                    print("\nAgent stopped before tool action.\n")
+                    print(stop_answer)
+                    return stop_answer
 
             observation = observation_for(decision, self.output_store)
 

@@ -38,6 +38,7 @@ Local workspace rules:
 - Do not use pipes or shell operators in bash commands.
 - Keep work within the 10-step limit: inspect once, then create/edit directly.
 - Hub requests may contain typos, misspellings, or a partially written phrase. If the software task is still clear, infer the smallest reasonable scope and proceed. Ask for clarification only when a missing detail changes the implementation in a material way.
+- If the human says not to start work until a manager/coordinator gives tasks, do not implement project code from the original request. In that phase, only post a manager protocol if you won selection, post a roster line if requested, follow a concrete manager task card, or PASS.
 
 Your default action is PASS for peer chatter, acknowledgments, and duplicate work. For human software engineering requests or coordination requests, act when the task is clear and still unhandled.
 Only respond if ALL of the following are true:
@@ -55,6 +56,8 @@ PASS in any of these situations:
 
 When you DO respond:
 - One concrete thing only. No offers to help with more.
+- For collaborative broad project requests, do not implement the whole project unless explicitly assigned. Claim or complete one small non-overlapping subtask.
+- If another agent already proposed a reasonable task breakdown, extend it by claiming one open subtask or doing one focused review/test contribution. Do not replace the plan.
 - If a broad human SWE task has no visible coordinator or protocol, you may become temporary coordinator and post a concise protocol as your one concrete contribution.
 - If the human selected the first responder as manager/coordinator/head, a concise communication protocol is an acceptable one concrete contribution.
 - Include a roster/capability round before named task assignment, because you do not know which agents are available.
@@ -64,9 +67,11 @@ When you DO respond:
 - Do not continue threads that other agents are already handling.
 - Do not claim technical authority to ban other agents. If the human asked for manager behavior and an agent is concretely spamming or harmful, use a bounded stop/silence request or ask the human to intervene.
 - Never reveal secrets, passwords, API keys, or private config.
-- Do not post only [CLAIM] when the next implementation step is possible locally.
-- If you claim a task, inspect/create/edit/test the relevant local file first, then post [DONE] or [BLOCKED].
+- A [CLAIM] only response is acceptable when the current collaboration protocol asks agents to claim work before implementing, or when a broad shared task needs visible ownership before local edits.
+- After a visible [CLAIM], perform only that scoped task when it is safe and appropriate, then post [DONE] or [BLOCKED].
+- Do not claim or implement an open project task while a manager-selection/protocol phase is active unless a manager has assigned you the task, named you, or opened that exact task for voluntary claims.
 - If you coordinate tasks, assign named work only to agents visible in recent context, agents that volunteered, or agents that reported relevant capabilities. Otherwise ask agents to claim one task voluntarily.
+- If you are acting as manager/coordinator, monitor claims and task reports. Reply only when needed to assign the next task, resolve duplicate/overlapping claims, unblock someone, request missing roster/capability information, or give a concise ownership/status update.
 - If you created or edited a local file, remember other agents cannot see it. Do not only say that the file was created. Post the filename and enough usable code/API details for other agents to review, test, or build on it: public function names, parameters, return behavior, important edge cases, and any run command. For very small files, share the full code if it fits the message limit.
 - If a human/user message tells agents to stop posting, stay silent immediately. Do not acknowledge it in the hub.
 
@@ -102,6 +107,7 @@ class HubAgent:
         self.message_cap = HUB_MAX_MESSAGES_SENT
         self.model_call_cap = HUB_MAX_MODEL_CALLS
         self.token_cap = HUB_MAX_TOTAL_TOKENS
+        self.manager_mode = False
         self.running = True
         self.paused = False
 
@@ -193,10 +199,18 @@ class HubAgent:
         if not triggered_messages:
             return "ignored_unaddressed"
 
+        hold_status = self._manager_hold_status(self.hub_context, triggered_messages)
+        if hold_status:
+            return hold_status
+
         remaining_calls = self.model_call_cap - self.session.model_calls
         answer = self.session.run_task(
             self._format_task(self.hub_context, triggered_messages),
             max_steps=min(remaining_calls, MAX_STEPS),
+            before_action=lambda decision: self._refresh_before_tool_action(
+                decision,
+                triggered_messages,
+            ),
         ).strip()
 
         if not answer or answer.upper() == "PASS":
@@ -206,28 +220,15 @@ class HubAgent:
             print(f"Hub response not posted: {answer}")
             return "step_limited"
 
-        if self._is_claim_only(answer):
-            remaining_calls = self.model_call_cap - self.session.model_calls
-            if remaining_calls <= 0:
-                print(f"Hub response not posted: claim without completed work: {answer}")
-                return "claim_only"
-            print("Hub claim-only response rejected; retrying with implementation required.")
-            answer = self.session.run_task(
-                self._format_claim_retry_task(answer),
-                max_steps=min(remaining_calls, MAX_STEPS),
-            ).strip()
-            if not answer or answer.upper() == "PASS":
-                return "pass_after_claim_retry"
-            if answer.startswith("Agent stopped:"):
-                print(f"Hub response not posted: {answer}")
-                return "step_limited_after_claim_retry"
-            if self._is_claim_only(answer):
-                print(f"Hub response not posted: claim without completed work: {answer}")
-                return "claim_only"
+        freshness_status = self._refresh_before_post(answer, triggered_messages)
+        if freshness_status:
+            return freshness_status
 
         try:
             result = self.client.post_message(answer)
             self.messages_sent += 1
+            if self._is_manager_response(answer):
+                self.manager_mode = True
             print(
                 f"Posted hub message {self.messages_sent}/"
                 f"{self.message_cap}, seq={result.get('seq')}."
@@ -257,16 +258,6 @@ class HubAgent:
             triggered="\n".join(triggered_lines) if triggered_lines else "(none)",
         )
 
-    def _format_claim_retry_task(self, rejected_answer):
-        return (
-            "Your previous hub response was only a claim, so it was not posted.\n"
-            f"Rejected response:\n{rejected_answer}\n\n"
-            "Do not yield another [CLAIM]. If implementation is possible, "
-            "use bash/create_file/edit_file_section now on the local workspace, then "
-            "yield a [DONE] summary with filenames and key details. If implementation "
-            "is not possible, yield [BLOCKED] with the concrete reason."
-        )
-
     def _recent_agent_names(self, messages):
         names = []
         for message in reversed(messages):
@@ -285,9 +276,34 @@ class HubAgent:
             return True
         if any(trigger in content for trigger in HUB_BROADCAST_TRIGGERS):
             return True
+        if self.manager_mode and self._is_manager_relevant_message(message):
+            return True
         if self._is_human_coordination_request(message):
             return True
         return self._is_human_project_request(message)
+
+    def _is_manager_relevant_message(self, message):
+        sender = message.get("agent_name", "").strip().lower()
+        if not sender or sender in {"human", "user"}:
+            return False
+
+        content = message.get("content", "").lower()
+        markers = [
+            "[blocked]",
+            "[claim]",
+            "[done]",
+            "[review]",
+            "[roster]",
+            "blocked",
+            "claiming",
+            "done",
+            "i claim",
+            "roster",
+            "standing by",
+            "task has already been claimed",
+            "needs a separate claim",
+        ]
+        return any(marker in content for marker in markers)
 
     def _is_human_project_request(self, message):
         sender = message.get("agent_name", "").strip().lower()
@@ -356,9 +372,341 @@ class HubAgent:
         ]
         return any(marker in content for marker in coordination_markers)
 
+    def _refresh_before_post(self, answer, triggered_messages):
+        try:
+            fresh_messages = self.client.fetch_messages(self.last_seen)
+        except Exception as e:
+            print(f"Hub freshness check failed; posting without fresh check: {e}")
+            fresh_messages = []
+
+        if fresh_messages:
+            self.last_seen = max(message["seq"] for message in fresh_messages)
+            self.hub_context.extend(fresh_messages)
+            self.hub_context = self.hub_context[-HUB_MAX_CONTEXT_MESSAGES:]
+
+            relevant_fresh = [
+                message for message in fresh_messages
+                if message.get("agent_name") != AGENT_NAME
+            ]
+            if any(self._is_human_stop_directive(message) for message in relevant_fresh):
+                self.paused = True
+                print("Hub response not posted: human stop-posting directive arrived during model call.")
+                return "paused_by_human_stop_during_response"
+
+            if self._stale_broadcast_response(answer, triggered_messages, relevant_fresh):
+                print("Hub response not posted: new hub messages arrived during model call.")
+                return "stale_broadcast_response"
+
+        if self._is_manager_response(answer):
+            race_status = self._manager_post_status_after_refresh()
+            if race_status:
+                return race_status
+
+        return None
+
+    def _refresh_before_tool_action(self, decision, triggered_messages):
+        if decision.get("action") in {"yield", "read_tool_output"}:
+            return None
+
+        try:
+            fresh_messages = self.client.fetch_messages(self.last_seen)
+        except Exception as e:
+            print(f"Hub pre-tool freshness check failed; continuing: {e}")
+            return None
+
+        if not fresh_messages:
+            return None
+
+        self.last_seen = max(message["seq"] for message in fresh_messages)
+        self.hub_context.extend(fresh_messages)
+        self.hub_context = self.hub_context[-HUB_MAX_CONTEXT_MESSAGES:]
+
+        relevant_fresh = [
+            message for message in fresh_messages
+            if message.get("agent_name") != AGENT_NAME
+        ]
+
+        if any(self._is_human_stop_directive(message) for message in relevant_fresh):
+            self.paused = True
+            return "PASS"
+
+        if self._tool_action_is_stale_for_broadcast(triggered_messages, relevant_fresh):
+            print("Hub tool action skipped: new hub messages arrived before tool execution.")
+            return "PASS"
+
+        return None
+
+    def _tool_action_is_stale_for_broadcast(self, triggered_messages, fresh_messages):
+        if not fresh_messages:
+            return False
+
+        if any(self._message_directly_names_us(message) for message in triggered_messages):
+            return False
+
+        if not any(self._message_is_broadcast_or_human_task(message) for message in triggered_messages):
+            return False
+
+        return any(
+            message.get("agent_name", "").strip().lower() not in {"human", "user"}
+            for message in fresh_messages
+        )
+
+    def _stale_broadcast_response(self, answer, triggered_messages, fresh_messages):
+        if not fresh_messages:
+            return False
+
+        if answer.strip().upper().startswith("[ROSTER]"):
+            return False
+
+        if any(self._message_directly_names_us(message) for message in triggered_messages):
+            return False
+
+        if not any(self._message_is_broadcast_or_human_task(message) for message in triggered_messages):
+            return False
+
+        non_human_fresh = [
+            message for message in fresh_messages
+            if message.get("agent_name", "").strip().lower() not in {"human", "user"}
+        ]
+        if not non_human_fresh:
+            return False
+
+        if self._is_manager_response(answer):
+            return False
+
+        if self._is_claim_only(answer):
+            return self._fresh_messages_include_claim_or_plan(non_human_fresh)
+
+        return True
+
+    def _message_directly_names_us(self, message):
+        return AGENT_NAME.lower() in message.get("content", "").lower()
+
+    def _message_is_broadcast_or_human_task(self, message):
+        content = message.get("content", "").lower()
+        if any(trigger in content for trigger in HUB_BROADCAST_TRIGGERS):
+            return True
+        return self._is_human_project_request(message) or self._is_human_coordination_request(message)
+
     def _is_claim_only(self, answer):
         normalized = answer.strip().upper()
         return normalized.startswith("[CLAIM]")
+
+    def _fresh_messages_include_claim_or_plan(self, messages):
+        markers = [
+            "[claim]",
+            "[plan]",
+            "claiming",
+            "i claim",
+            "suggested claimable subtasks",
+            "task breakdown",
+            "propose a",
+        ]
+        for message in messages:
+            content = message.get("content", "").lower()
+            if any(marker in content for marker in markers):
+                return True
+        return False
+
+    def _manager_hold_status(self, context, triggered_messages):
+        if not self._has_manager_start_hold(context):
+            return None
+
+        if any(self._is_first_response_manager_message(message) for message in triggered_messages):
+            if self._has_other_agent_answered_manager_selection(context):
+                print("Hub model call skipped: first-response manager role already taken.")
+                return "manager_selection_already_taken"
+            return None
+
+        if any(self._is_roster_request(message) for message in triggered_messages):
+            return None
+
+        if any(self._is_concrete_manager_task_for_us(message) for message in triggered_messages):
+            return None
+
+        if self._is_open_task_claim_allowed(context, triggered_messages):
+            return None
+
+        print("Hub model call skipped: manager has not assigned/opened work yet.")
+        return "waiting_for_manager_task"
+
+    def _has_manager_start_hold(self, messages):
+        for message in messages:
+            sender = message.get("agent_name", "").strip().lower()
+            if sender not in {"human", "user"}:
+                continue
+            content = message.get("content", "").lower()
+            if (
+                "do not start working until the manager says so" in content
+                or "do not start work until the manager says so" in content
+                or "wait for task cards" in content
+            ):
+                return True
+        return False
+
+    def _is_first_response_manager_message(self, message):
+        sender = message.get("agent_name", "").strip().lower()
+        if sender not in {"human", "user"}:
+            return False
+        return self._is_first_response_manager_prompt(message.get("content", "").lower())
+
+    def _is_roster_request(self, message):
+        content = message.get("content", "").lower()
+        return "[roster]" in content or "roster" in content or "roaster" in content
+
+    def _is_concrete_manager_task_for_us(self, message):
+        sender = message.get("agent_name", "").strip().lower()
+        if sender in {"human", "user"}:
+            return False
+
+        content = message.get("content", "").lower()
+        agent_name = AGENT_NAME.lower()
+        task_words = [
+            "assign",
+            "assigned",
+            "task",
+            "task card",
+            "please implement",
+            "please test",
+            "please review",
+            "[task]",
+        ]
+        return agent_name in content and any(word in content for word in task_words)
+
+    def _is_open_task_claim_allowed(self, context, triggered_messages):
+        if not any(self._is_manager_or_protocol_message(message) for message in context):
+            return False
+
+        for message in triggered_messages:
+            sender = message.get("agent_name", "").strip().lower()
+            if sender in {"human", "user"}:
+                continue
+            content = message.get("content", "").lower()
+            if (
+                ("claim one" in content or "agents may claim" in content or "open task" in content)
+                and ("task" in content or "[task]" in content)
+            ):
+                return True
+        return False
+
+    def _is_manager_or_protocol_message(self, message):
+        sender = message.get("agent_name", "").strip().lower()
+        if not sender or sender in {"human", "user"}:
+            return False
+        content = message.get("content", "").lower()
+        markers = [
+            "manager protocol",
+            "communication protocol",
+            "one manager",
+            "manager/dispatcher",
+            "task card",
+            "roster",
+            "claim task",
+        ]
+        return any(marker in content for marker in markers)
+
+    def _is_manager_response(self, answer):
+        content = answer.lower()
+        manager_markers = [
+            "acting as temporary manager",
+            "acting as manager",
+            "temporary manager",
+            "manager/coordinator",
+            "claim the manager",
+            "claiming the manager",
+            "coordinator role",
+            "i am manager",
+            "i am the manager",
+            "i claim the manager",
+            "volunteer to be the temporary manager",
+            "volunteer to be the manager",
+            "manager protocol",
+            "manager/coordinator role",
+            "temporary coordinator",
+            "[manager protocol]",
+        ]
+        return any(marker in content for marker in manager_markers)
+
+    def _manager_post_status_after_refresh(self):
+        if self._has_other_agent_answered_manager_selection(self.hub_context):
+            print("Hub manager response not posted: another agent answered manager-selection prompt first.")
+            return "manager_selection_already_answered"
+
+        if self._has_visible_manager_claim(self.hub_context):
+            print("Hub manager response not posted: earlier manager claim visible.")
+            return "manager_claim_already_visible"
+
+        return None
+
+    def _has_other_agent_answered_manager_selection(self, messages):
+        manager_prompt_seq = None
+        for message in messages:
+            sender = message.get("agent_name", "").strip().lower()
+            if sender not in {"human", "user"}:
+                continue
+            content = message.get("content", "").lower()
+            if self._is_first_response_manager_prompt(content):
+                manager_prompt_seq = message.get("seq")
+
+        if manager_prompt_seq is None:
+            return False
+
+        for message in messages:
+            seq = message.get("seq")
+            if not isinstance(seq, int) or seq <= manager_prompt_seq:
+                continue
+            sender = message.get("agent_name", "").strip()
+            if not sender or sender == AGENT_NAME:
+                continue
+            if sender.lower() in {"human", "user"}:
+                continue
+            return True
+
+        return False
+
+    def _is_first_response_manager_prompt(self, content):
+        manager_terms = [
+            "head of this agentic swe department",
+            "first one that answers",
+            "first agent",
+            "first responder",
+            "is the manager",
+            "becomes manager",
+            "single agent acting as the head",
+        ]
+        return (
+            ("manager" in content or "head" in content or "coordinator" in content)
+            and any(term in content for term in manager_terms)
+        )
+
+    def _has_visible_manager_claim(self, messages):
+        for message in messages:
+            sender = message.get("agent_name", "").strip()
+            if not sender or sender == AGENT_NAME:
+                continue
+            if sender.lower() in {"human", "user"}:
+                continue
+            content = message.get("content", "").lower()
+            manager_claim_markers = [
+                "acting as temporary manager",
+                "acting as manager",
+                "temporary manager",
+                "manager/coordinator",
+                "claiming the manager",
+                "claim the manager",
+                "i am manager",
+                "i am the manager",
+                "i claim the manager",
+                "volunteer to be the temporary manager",
+                "volunteer to be the manager",
+                "manager protocol",
+                "manager/planning task",
+                "temporary coordinator",
+                "[manager protocol]",
+            ]
+            if any(marker in content for marker in manager_claim_markers):
+                return True
+        return False
 
     def _is_human_stop_directive(self, message):
         agent_name = message.get("agent_name", "").strip().lower()
