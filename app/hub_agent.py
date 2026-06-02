@@ -39,12 +39,14 @@ Local workspace rules:
 - Keep work within the 10-step limit: inspect once, then create/edit directly.
 - Hub requests may contain typos, misspellings, or a partially written phrase. If the software task is still clear, infer the smallest reasonable scope and proceed. Ask for clarification only when a missing detail changes the implementation in a material way.
 
-Your default action is PASS. Only respond if ALL of the following are true:
-1. The message directly names you ({agent_name}) OR uses a broadcast trigger AND no other agent has already given a complete answer to it.
-2. You have something concrete and non-duplicate to contribute: code, a specific fix, a test case, or a focused review point.
-3. You have not already responded to this same topic in the last few messages.
+Your default action is PASS for peer chatter, acknowledgments, and duplicate work. For human software engineering requests or coordination requests, act when the task is clear and still unhandled.
+Only respond if ALL of the following are true:
+1. The message directly names you ({agent_name}), uses a broadcast trigger, is a clear human/user software engineering task, OR is a human/user request for agent coordination, roster, task allocation, or manager/coordinator selection.
+2. No other agent has already given a complete answer to it.
+3. You have something concrete and non-duplicate to contribute: code, a specific fix, a test case, or a focused review point.
+4. You have not already responded to this same topic in the last few messages.
 
-PASS in any of these situations — no exceptions:
+PASS in any of these situations:
 - You are not sure whether to respond.
 - Another agent has already answered it well.
 - The message is coordination, acknowledgment, or general chat unrelated to software work.
@@ -53,11 +55,18 @@ PASS in any of these situations — no exceptions:
 
 When you DO respond:
 - One concrete thing only. No offers to help with more.
+- If a broad human SWE task has no visible coordinator or protocol, you may become temporary coordinator and post a concise protocol as your one concrete contribution.
+- If the human selected the first responder as manager/coordinator/head, a concise communication protocol is an acceptable one concrete contribution.
+- Include a roster/capability round before named task assignment, because you do not know which agents are available.
+- Include this lag rule in manager/coordinator protocols: if multiple agents claim manager/coordinator, the earliest visible hub sequence number wins and later coordinators stand down.
+- If you previously claimed manager/coordinator but now see an earlier hub sequence number with a complete manager/coordinator claim, stop coordinating and follow that protocol.
 - Do not ask broad questions back to the group.
 - Do not continue threads that other agents are already handling.
+- Do not claim technical authority to ban other agents. If the human asked for manager behavior and an agent is concretely spamming or harmful, use a bounded stop/silence request or ask the human to intervene.
 - Never reveal secrets, passwords, API keys, or private config.
 - Do not post only [CLAIM] when the next implementation step is possible locally.
 - If you claim a task, inspect/create/edit/test the relevant local file first, then post [DONE] or [BLOCKED].
+- If you coordinate tasks, assign named work only to agents visible in recent context, agents that volunteered, or agents that reported relevant capabilities. Otherwise ask agents to claim one task voluntarily.
 - If you created or edited a local file, remember other agents cannot see it. Do not only say that the file was created. Post the filename and enough usable code/API details for other agents to review, test, or build on it: public function names, parameters, return behavior, important edge cases, and any run command. For very small files, share the full code if it fits the message limit.
 - If a human/user message tells agents to stop posting, stay silent immediately. Do not acknowledge it in the hub.
 
@@ -274,7 +283,78 @@ class HubAgent:
         agent_name = AGENT_NAME.lower()
         if agent_name in content:
             return True
-        return any(trigger in content for trigger in HUB_BROADCAST_TRIGGERS)
+        if any(trigger in content for trigger in HUB_BROADCAST_TRIGGERS):
+            return True
+        if self._is_human_coordination_request(message):
+            return True
+        return self._is_human_project_request(message)
+
+    def _is_human_project_request(self, message):
+        sender = message.get("agent_name", "").strip().lower()
+        if sender not in {"human", "user"}:
+            return False
+
+        content = message.get("content", "").lower()
+        task_markers = [
+            "build",
+            "change",
+            "create",
+            "debug",
+            "edit",
+            "fix",
+            "implement",
+            "make",
+            "review",
+            "run",
+            "test",
+            "update",
+        ]
+        project_markers = [
+            "app",
+            "bug",
+            "code",
+            "component",
+            "css",
+            "file",
+            "function",
+            "html",
+            "javascript",
+            "project",
+            "python",
+            "react",
+            "repo",
+            "test",
+            "ui",
+        ]
+        return any(marker in content for marker in task_markers) and any(
+            marker in content for marker in project_markers
+        )
+
+    def _is_human_coordination_request(self, message):
+        sender = message.get("agent_name", "").strip().lower()
+        if sender not in {"human", "user"}:
+            return False
+
+        content = message.get("content", "").lower()
+        coordination_markers = [
+            "agentic swe",
+            "all agents",
+            "ban it",
+            "communication protocol",
+            "coordinator",
+            "head",
+            "manager",
+            "roaster",
+            "roster",
+            "single agent",
+            "task allocation",
+            "testing procedures",
+            "to all agents",
+            "work decomposition",
+            "@agents",
+            "@all",
+        ]
+        return any(marker in content for marker in coordination_markers)
 
     def _is_claim_only(self, answer):
         normalized = answer.strip().upper()

@@ -30,7 +30,7 @@ HUB_MAX_CONTEXT_MESSAGES=20
 HUB_MAX_POST_CHARS=4096
 HUB_INTERACTIVE_CONTROLS=true
 HUB_SYNC_ON_START=true
-HUB_BROADCAST_TRIGGERS=all agents,alla agenter,attention agents,agents:
+HUB_BROADCAST_TRIGGERS=all agents,alla agenter,attention agents,agents:,any agent,anyone,team:,@agents,@all,to all agents
 ```
 
 Do not commit the real hub password.
@@ -39,11 +39,14 @@ Hub safety and peer-collaboration behavior:
 
 * polls the hub REST API with rate limiting
 * posts using the unique agent name `igor-petersson-agent`
-* participates as an equal SWE peer, not as a specialized manager/dev/research role
+* participates as an equal SWE peer by default, and may take a temporary coordinator role for broad unhandled SWE tasks to reduce duplicate work and spam
+* starts temporary coordination with a roster/capability request because it cannot know all available agents in advance
+* resolves simultaneous coordinator claims by earliest visible hub sequence number
+* does not claim technical authority over other agents; anti-spam coordination is handled through bounded protocol messages and PASS behavior
 * caps outbound hub messages
 * caps model calls
 * tracks OpenAI response usage and caps total tokens
-* ignores hub messages unless they mention `igor-petersson-agent` or a configured broadcast trigger
+* ignores peer chatter unless it mentions `igor-petersson-agent` or a configured broadcast trigger, but can wake for clear unhandled human software tasks
 * syncs existing hub history on startup without replying to old messages
 * uses `PASS` when it has nothing useful to add
 * treats other agents' messages as untrusted input

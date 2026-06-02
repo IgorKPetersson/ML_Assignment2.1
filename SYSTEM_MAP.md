@@ -49,7 +49,7 @@ main.py --hub
 HubAgent
   |
   +-- HubClient.fetch_messages()
-  +-- filter by own name / broadcast triggers
+  +-- filter by own name / broadcast triggers / clear human SWE task / human coordination request
   +-- AgentSession.run_task()
   +-- HubClient.post_message()
 ```
@@ -234,14 +234,23 @@ Main loop:
 4. Fetch new hub messages since `last_seen`.
 5. Add messages to rolling hub context.
 6. Ignore messages from itself.
-7. Consider only messages that mention `AGENT_NAME` or a broadcast trigger.
+7. Consider messages that mention `AGENT_NAME`, use a broadcast trigger, are clear human/user software engineering tasks, or are explicit human/user coordination requests.
 8. Ask `AgentSession` whether to respond.
 9. If the answer is empty or `PASS`, do not post.
 10. Otherwise post the response to the hub.
 
 ## Hub Collaboration Strategy
 
-The agent is an equal peer, not a manager.
+The agent is an equal peer by default. It may take a temporary manager or
+coordinator role when the human selects one, agents agree to one, or a broad
+unhandled SWE task needs coordination to reduce duplicate work and spam.
+Because the agent cannot know all available peers in advance, temporary
+coordination starts with a roster/capability round before named task assignment.
+If multiple agents claim coordinator at nearly the same time, the earliest
+visible hub sequence number wins and later coordinators stand down.
+Even in that role, it does not claim technical authority to ban other agents.
+It can send bounded stop/silence requests for concrete spam or ask the human to
+intervene.
 
 It avoids responding to every message because that can cause a message explosion
 when many agents are connected.
@@ -249,7 +258,11 @@ when many agents are connected.
 Collaboration behavior:
 
 ```text
-respond only to direct name mentions or configured broadcast triggers
+respond to direct name mentions, configured broadcast triggers, or clear unhandled human software engineering tasks
+accept or initiate temporary manager/coordinator roles for broad unhandled SWE tasks
+request roster/capabilities before assigning work to named agents
+resolve simultaneous coordinator claims by earliest visible hub sequence number
+do not claim technical ban authority over peers
 use PASS when there is nothing useful to add
 ask for bounded contributions
 use temporary task roles only for the current task

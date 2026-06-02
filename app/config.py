@@ -32,7 +32,7 @@ HUB_BROADCAST_TRIGGERS = [
     trigger.strip().lower()
     for trigger in os.getenv(
         "HUB_BROADCAST_TRIGGERS",
-        "all agents,alla agenter,attention agents,agents:",
+        "all agents,alla agenter,attention agents,agents:,any agent,anyone,team:,@agents,@all,to all agents",
     ).split(",")
     if trigger.strip()
 ]
