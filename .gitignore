@@ -12,8 +12,10 @@ LIVE_EXAM_TRAINING_LOCAL.md
 .claude/
 DEMO_STEPS.md
 TEST_CHECKLIST.md
-workspace/ascii_image.py
-workspace/calculator.py
-workspace/calculator_app.py
-workspace/snake_game.py
-workspace/src/
+workspace/
+.superpowers/
+ASS2-VG/
+PROJECT_CONTEXT.md
+VG_DEMO_HANDOFF.md
+gui/
+test_vg_requirements.py

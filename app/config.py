@@ -28,11 +28,12 @@ HUB_MAX_CONTEXT_MESSAGES = int(os.getenv("HUB_MAX_CONTEXT_MESSAGES", "20"))
 HUB_MAX_POST_CHARS = int(os.getenv("HUB_MAX_POST_CHARS", "4096"))
 HUB_INTERACTIVE_CONTROLS = os.getenv("HUB_INTERACTIVE_CONTROLS", "true").lower() == "true"
 HUB_SYNC_ON_START = os.getenv("HUB_SYNC_ON_START", "true").lower() == "true"
+HUB_ROSTER_WINDOW_SECONDS = int(os.getenv("HUB_ROSTER_WINDOW_SECONDS", "60"))
 HUB_BROADCAST_TRIGGERS = [
     trigger.strip().lower()
     for trigger in os.getenv(
         "HUB_BROADCAST_TRIGGERS",
-        "all agents,alla agenter,attention agents,agents:,any agent,anyone,team:,@agents,@all,to all agents",
+        "all agents,alla agenter,attention agents,agents:,any agent,anyone,team:,@agents,@all,to all agents, @all agents",
     ).split(",")
     if trigger.strip()
 ]

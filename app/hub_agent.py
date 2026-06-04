@@ -15,6 +15,7 @@ from config import (
     HUB_MIN_REQUEST_INTERVAL,
     HUB_PASSWORD,
     HUB_POLL_SECONDS,
+    HUB_ROSTER_WINDOW_SECONDS,
     HUB_SYNC_ON_START,
     HUB_URL,
     MAX_STEPS,
@@ -59,8 +60,8 @@ When you DO respond:
 - For collaborative broad project requests, do not implement the whole project unless explicitly assigned. Claim or complete one small non-overlapping subtask.
 - If another agent already proposed a reasonable task breakdown, extend it by claiming one open subtask or doing one focused review/test contribution. Do not replace the plan.
 - If a broad human SWE task has no visible coordinator or protocol, you may become temporary coordinator and post a concise protocol as your one concrete contribution.
-- If the human selected the first responder as manager/coordinator/head, a concise communication protocol is an acceptable one concrete contribution.
-- Include a roster/capability round before named task assignment, because you do not know which agents are available.
+- If the human selected the first responder as manager/coordinator/head, post the full communication protocol in that same message — do not post a bare [CLAIM] and wait for a second turn.
+- Include a roster/capability round before named task assignment, because you do not know which agents are available. After requesting rosters, do not wait indefinitely: once you have received 2 or more roster entries (or your roster request has been acknowledged with no new entries in the last visible messages), proceed to assign tasks based on the agents currently visible. New agents can always claim open tasks later.
 - Include this lag rule in manager/coordinator protocols: if multiple agents claim manager/coordinator, the earliest visible hub sequence number wins and later coordinators stand down.
 - If you previously claimed manager/coordinator but now see an earlier hub sequence number with a complete manager/coordinator claim, stop coordinating and follow that protocol.
 - Do not ask broad questions back to the group.
@@ -110,6 +111,7 @@ class HubAgent:
         self.manager_mode = False
         self.running = True
         self.paused = False
+        self.roster_deadline = None
 
     def run(self):
         print(f"Hub agent started as {AGENT_NAME}.")
@@ -140,6 +142,10 @@ class HubAgent:
             if self.paused:
                 time.sleep(HUB_POLL_SECONDS)
                 continue
+
+            if self.roster_deadline and time.time() >= self.roster_deadline:
+                self.roster_deadline = None
+                self._close_roster()
 
             try:
                 messages = self.client.fetch_messages(self.last_seen)
@@ -229,6 +235,9 @@ class HubAgent:
             self.messages_sent += 1
             if self._is_manager_response(answer):
                 self.manager_mode = True
+            if self._answer_requests_roster(answer) and self.roster_deadline is None:
+                self.roster_deadline = time.time() + HUB_ROSTER_WINDOW_SECONDS
+                print(f"Roster window opened: will close in {HUB_ROSTER_WINDOW_SECONDS}s.")
             print(
                 f"Posted hub message {self.messages_sent}/"
                 f"{self.message_cap}, seq={result.get('seq')}."
@@ -237,6 +246,35 @@ class HubAgent:
         except Exception as e:
             print(f"Hub post failed: {e}")
             return "post_failed"
+
+    def _close_roster(self):
+        if self.messages_sent >= self.message_cap:
+            return
+        print("Roster window closed: requesting task assignment.")
+        synthetic = {
+            "seq": -1,
+            "agent_name": "system",
+            "content": (
+                "Roster collection window has closed. "
+                "Proceed now with task assignment based on the agents visible in context. "
+                "Do not request more rosters."
+            ),
+        }
+        context = self.hub_context + [synthetic]
+        answer = self.session.run_task(
+            self._format_task(context, [synthetic]),
+            max_steps=1,
+        ).strip()
+
+        if not answer or answer.upper() == "PASS":
+            return
+
+        try:
+            result = self.client.post_message(answer)
+            self.messages_sent += 1
+            print(f"Posted roster-close assignment, seq={result.get('seq')}.")
+        except Exception as e:
+            print(f"Hub post failed during roster close: {e}")
 
     def _format_task(self, messages, triggered_messages=None):
         context = messages[-HUB_MAX_CONTEXT_MESSAGES:]
@@ -455,7 +493,7 @@ class HubAgent:
         if not fresh_messages:
             return False
 
-        if answer.strip().upper().startswith("[ROSTER]"):
+        if answer.strip().upper().startswith("[ROSTER]") or answer.strip().upper().startswith("ROSTER"):
             return False
 
         if any(self._message_directly_names_us(message) for message in triggered_messages):
@@ -474,7 +512,7 @@ class HubAgent:
         if self._is_manager_response(answer):
             return False
 
-        if self._is_claim_only(answer):
+        if self._is_claim_only(answer) or self._is_plan_response(answer):
             return self._fresh_messages_include_claim_or_plan(non_human_fresh)
 
         return True
@@ -491,6 +529,9 @@ class HubAgent:
     def _is_claim_only(self, answer):
         normalized = answer.strip().upper()
         return normalized.startswith("[CLAIM]")
+
+    def _is_plan_response(self, answer):
+        return answer.strip().upper().startswith("[PLAN]")
 
     def _fresh_messages_include_claim_or_plan(self, messages):
         markers = [
@@ -553,6 +594,13 @@ class HubAgent:
     def _is_roster_request(self, message):
         content = message.get("content", "").lower()
         return "[roster]" in content or "roster" in content or "roaster" in content
+
+    def _answer_requests_roster(self, answer):
+        text = answer.lower()
+        if "roster" not in text and "roaster" not in text:
+            return False
+        request_signals = ["please post", "post your", "@all", "all agents", "post a roster"]
+        return any(signal in text for signal in request_signals)
 
     def _is_concrete_manager_task_for_us(self, message):
         sender = message.get("agent_name", "").strip().lower()
