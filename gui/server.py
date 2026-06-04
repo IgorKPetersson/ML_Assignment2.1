@@ -159,7 +159,20 @@ class Handler(BaseHTTPRequestHandler):
         ]
         if test_class:
             cmd.append(test_class)
-        self._run_and_stream(cmd)
+        try:
+            proc = subprocess.Popen(
+                cmd, cwd=PROJECT_ROOT,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
+            )
+            for line in proc.stdout:
+                if line.startswith('test_'):
+                    self._write_chunk('\n')
+                self._write_chunk(line)
+            proc.wait()
+        except Exception as e:
+            self._write_chunk(f'Error: {e}\n')
+        self._end_stream()
 
     def _stream_agent(self, task):
         self._start_stream()

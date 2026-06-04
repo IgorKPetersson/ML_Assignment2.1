@@ -594,7 +594,7 @@ function testOut(text, type) {
   const out = $('test-output');
   const C = {ok:'var(--green)',fail:'var(--red)',skip:'var(--amber)',header:'var(--tx2)',summary:'var(--violet)',info:'var(--tx3)'};
   const d = document.createElement('div');
-  d.style.color = C[type]||C.info; d.textContent = text;
+  if (type === 'spacer') { d.style.height = '10px'; } else { d.style.color = C[type]||C.info; d.textContent = text; }
   out.appendChild(d); out.scrollTop = out.scrollHeight;
 }
 
@@ -618,7 +618,8 @@ async function runOneTest(id, cls) {
   let passed=0, failed=0;
   try {
     await streamLines('/api/run-tests?class='+encodeURIComponent(cls), line => {
-      if (line.includes(' ... ok'))                           { passed++; testOut(line,'ok'); }
+      if (line.startsWith('test_'))                           { testOut('', 'spacer'); testOut(line,'info'); }
+      else if (line.includes(' ... ok'))                     { passed++; testOut(line,'ok'); }
       else if (line.includes(' ... FAIL')||line.includes(' ... ERROR')) { failed++; testOut(line,'fail'); }
       else if (line.includes(' ... skipped'))                { testOut(line,'skip'); }
       else if (/^(Ran |OK|FAILED)/.test(line))               { testOut(line,'summary'); }
@@ -640,7 +641,8 @@ async function runAllTests() {
   let ok=0, fail=0, skip=0;
   try {
     await streamLines('/api/run-tests', line => {
-      if (line.includes(' ... ok'))                           { ok++;   testOut(line,'ok'); }
+      if (line.startsWith('test_'))                           { testOut('', 'spacer'); testOut(line,'info'); }
+      else if (line.includes(' ... ok'))                     { ok++;   testOut(line,'ok'); }
       else if (line.includes(' ... FAIL')||line.includes(' ... ERROR')) { fail++; testOut(line,'fail'); }
       else if (line.includes(' ... skipped'))                { skip++; testOut(line,'skip'); }
       else if (/^(Ran |OK|FAILED)/.test(line))               { testOut(line,'summary'); }
