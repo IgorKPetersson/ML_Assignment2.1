@@ -251,7 +251,7 @@
       <!-- Agent status banner -->
       <div id="agent-banner" style="margin:0 12px 6px;padding:8px 14px;border-radius:0 5px 5px 0;border-left:2px solid var(--tx3);background:var(--glass);border-top:1px solid var(--b1);border-right:1px solid var(--gb);border-bottom:1px solid var(--gb);font-size:11px;color:var(--tx3);display:flex;align-items:center;gap:10px;">
         <div class="dot" id="banner-dot"></div>
-        <span id="banner-text">Redo — ange en uppgift ovan och tryck ▶ Run Task</span>
+        <span id="banner-text">Ready — enter a task above and press ▶ Run Task</span>
       </div>
 
       <!-- Output log -->
@@ -419,8 +419,8 @@ function setMainStatus(status) {
     bdot.className = 'dot green';
     btext.style.color = 'var(--green)';
     btext.textContent = status === 'idle' && S.calls > 0
-      ? 'Klar ✓ — agenten är färdig'
-      : 'Redo — ange en uppgift ovan och tryck ▶ Run Task';
+      ? 'Done ✓ — agent finished'
+      : 'Ready — enter a task above and press ▶ Run Task';
   }
 }
 
