@@ -550,7 +550,7 @@ function demo(task) { $('task-input').value = task; runTask(); }
 const VG_TESTS = [
   {id:'vg1',cls:'TestVG1_ParallelSubAgents',  label:'VG.1',name:'Parallel Sub-agents', count:5},
   {id:'vg2',cls:'TestVG2_ContextEngineering', label:'VG.2',name:'Context Engineering', count:4},
-  {id:'vg3',cls:'TestVG3_TokenBudget',         label:'VG.3',name:'Token Budget & Cap',  count:6},
+  {id:'vg3',cls:'TestVG3_TokenBudget',         label:'VG.3',name:'Token Budget & Cap',  count:7},
   {id:'vg4',cls:'TestVG4_SafetyBlocking',      label:'VG.4',name:'Safety Blocking',     count:16},
   {id:'vg5',cls:'TestVG5_BashExecution',       label:'VG.5',name:'Bash Execution',      count:3},
   {id:'vg6',cls:'TestVG6_PartialFileEdit',     label:'VG.6',name:'Partial File Edit',   count:4},
@@ -638,26 +638,22 @@ async function runAllTests() {
   $('test-output').innerHTML = '';
   $('tests-summary').textContent = 'running…';
   testOut('Running all VG tests...','header');
-  let ok=0, fail=0, skip=0;
+  let ok=0, fail=0, skip=0, curCls=null, clsOk={};
   try {
     await streamLines('/api/run-tests', line => {
+      const grp = VG_TESTS.find(t => line.includes(t.cls));
+      if (grp) curCls = grp.id;
       if (line.startsWith('test_'))                           { testOut('', 'spacer'); testOut(line,'info'); }
-      else if (line.includes(' ... ok'))                     { ok++;   testOut(line,'ok'); }
+      else if (line.includes(' ... ok'))                     { ok++; testOut(line,'ok'); if (curCls) clsOk[curCls]=(clsOk[curCls]||0)+1; }
       else if (line.includes(' ... FAIL')||line.includes(' ... ERROR')) { fail++; testOut(line,'fail'); }
       else if (line.includes(' ... skipped'))                { skip++; testOut(line,'skip'); }
       else if (/^(Ran |OK|FAILED)/.test(line))               { testOut(line,'summary'); }
       else                                                   { testOut(line,'info'); }
-      VG_TESTS.forEach(t => {
-        if (line.includes(t.cls)) {
-          if (line.includes(' ... ok'))   setTestStat(t.id,'passed','✓');
-          if (line.includes(' ... FAIL')) setTestStat(t.id,'failed','fail');
-        }
-      });
     });
     $('tests-summary').textContent = `${ok} ok · ${fail} fail · ${skip} skip`;
     VG_TESTS.forEach(t => {
-      if ($('tstat-'+t.id).textContent === 'running…')
-        setTestStat(t.id,'passed',`${t.count}/${t.count} ✓`);
+      const n = clsOk[t.id] || 0;
+      setTestStat(t.id, n > 0 ? 'passed' : 'failed', `${n}/${t.count} ✓`);
     });
   } catch(e) {
     $('tests-summary').textContent = 'server offline';
