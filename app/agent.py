@@ -18,7 +18,7 @@ from config import (
     SYSTEM_PROMPT_PATH,
     TOKEN_WARNING_RATIO,
 )
-from file_tools import edit_file_section
+from file_tools import create_file, edit_file_section
 from shell_tools import execute_bash
 from structured_output import AGENT_RESPONSE_FORMAT
 from subagents import run_subagents
@@ -103,6 +103,15 @@ def observation_for(decision, output_store, evidence=""):
         result = execute_bash(command, require_confirmation=REQUIRE_TOOL_CONFIRMATION)
         return format_tool_output(result, output_store), 0
 
+    if action == "create_file":
+        trace("TOOL", "file create requested", decision["file_path"])
+        result = create_file(
+            decision["file_path"],
+            decision["new_text"],
+            require_confirmation=REQUIRE_TOOL_CONFIRMATION,
+        )
+        return format_tool_output(result, output_store), 0
+
     if action == "edit_file_section":
         trace("TOOL", "file edit requested", decision["file_path"])
         result = edit_file_section(
@@ -176,6 +185,11 @@ class AgentSession:
             "MAIN",
             "context trimmed",
             f"messages={len(self.messages)} model_view={len(preserved) + 1 + len(recent)}",
+        )
+        print(
+            f"\n[CHAT COMPACTION] History: {len(self.messages)} msgs "
+            f"→ Model sees: {len(preserved) + 1 + len(recent)} msgs "
+            f"(oldest {len(self.messages) - len(preserved) - 1 - len(recent)} dropped)\n"
         )
         compact_notice = {
             "role": "user",
