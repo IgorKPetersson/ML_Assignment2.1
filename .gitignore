@@ -18,3 +18,4 @@ TEST_CHECKLIST.md
 test_vg_requirements.py
 gui/session_logs.json
 .superpowers/
+workspace/
