@@ -28,7 +28,7 @@ MAX_SUBAGENTS = int(os.getenv("MAX_SUBAGENTS", "3"))
 SUBAGENT_TIMEOUT_SECONDS = int(os.getenv("SUBAGENT_TIMEOUT_SECONDS", "60"))
 SUBAGENT_EVIDENCE_CHARS = int(os.getenv("SUBAGENT_EVIDENCE_CHARS", "6000"))
 
-HUB_URL = os.getenv("HUB_URL", "https://wb48jtfnjng6on-8080.proxy.runpod.net").rstrip("/")
+HUB_URL = os.getenv("HUB_URL", "https://z0yncxbipft4e8-8080.proxy.runpod.net").rstrip("/")
 HUB_PASSWORD = os.getenv("HUB_PASSWORD", "")
 HUB_POLL_SECONDS = float(os.getenv("HUB_POLL_SECONDS", "4"))
 HUB_MIN_REQUEST_INTERVAL = float(os.getenv("HUB_MIN_REQUEST_INTERVAL", "1.1"))
