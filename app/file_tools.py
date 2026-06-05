@@ -48,6 +48,61 @@ def _is_editable(candidate):
     return False
 
 
+def create_file(file_path, new_text, require_confirmation=REQUIRE_TOOL_CONFIRMATION):
+    path, error = _resolve_project_path(file_path)
+    if error:
+        trace("TOOL", "file create blocked", error)
+        return error
+
+    workspace = (BASE_DIR / "workspace").resolve()
+    if path != workspace and workspace not in path.parents:
+        trace("TOOL", "file create blocked", f"outside workspace: {file_path}")
+        return f"Create blocked: file is outside workspace: {file_path}"
+
+    if not new_text:
+        trace("TOOL", "file create blocked", "new_text must not be empty")
+        return "Create blocked: new_text must not be empty."
+
+    if path.exists():
+        trace("TOOL", "file create blocked", f"file already exists: {file_path}")
+        return f"Create blocked: file already exists: {file_path}"
+
+    missing_parent = not path.parent.exists()
+
+    if require_confirmation:
+        print(f"\nCreate file? [y/n]\n{path}\n")
+        if missing_parent:
+            print(f"Missing directories will be created under: {path.parent.relative_to(BASE_DIR)}\n")
+        print("Content:\n")
+        print(new_text)
+
+        approval = request_approval("Approve file creation? [y/n]", str(path))
+        if approval == "rejected":
+            return "File creation rejected by user."
+        if approval == "timeout":
+            return "File creation approval timed out: no user response received. File not created."
+        if approval == "unavailable":
+            return "File creation approval unavailable: no user response received. File not created."
+        if approval == "empty":
+            return "File creation approval empty: no approval provided. File not created."
+        if approval == "invalid":
+            return "File creation approval invalid: expected y/yes/n/no. File not created."
+        if approval == "routed_to_main":
+            return "File creation approval not received: input was routed back to the main task prompt. File not created."
+        if approval != "approved":
+            return "File creation cancelled by user."
+
+    if missing_parent:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    path.write_text(new_text, encoding="utf-8")
+
+    trace("TOOL", "file created", str(path.relative_to(BASE_DIR)))
+    if missing_parent:
+        return f"Created directory {path.parent.relative_to(BASE_DIR)} and file {path.relative_to(BASE_DIR)}."
+    return f"Created file {path.relative_to(BASE_DIR)}."
+
+
 def edit_file_section(file_path, old_text, new_text, require_confirmation=REQUIRE_TOOL_CONFIRMATION):
     path, error = _resolve_project_path(file_path)
     if error:

@@ -12,6 +12,7 @@ AGENT_RESPONSE_FORMAT = {
                     "type": "string",
                     "enum": [
                         "bash",
+                        "create_file",
                         "edit_file_section",
                         "read_tool_output",
                         "spawn_subagents",
